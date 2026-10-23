@@ -153,3 +153,44 @@ def test_chromium_sandbox_policy(monkeypatch):
 def test_debug_is_off_by_default():
     src = open(app_mod.__file__, encoding="utf-8").read()
     assert 'os.getenv("FLASK_DEBUG", "0") == "1"' in src and "debug=True" not in src
+
+
+# ------------------------------------------------------------ บล็อก 11–12
+
+def _kpi(rate):
+    return {"readmission_rate": rate, "occupancy_rate": 50}
+
+
+def _dq(pct):
+    return {"no_pdx": {"value": 30, "pct": pct}}
+
+
+def test_alert_coding_backlog_over_10_percent():
+    import queries
+    out = queries.alerts(_kpi(0), [], {"items": []}, {"waiting": 0}, {"late_discharges": 0}, _dq(12.5))
+    assert any("ยังไม่ลงรหัสโรคหลัก" in a["issue"] for a in out)
+    out = queries.alerts(_kpi(0), [], {"items": []}, {"waiting": 0}, {"late_discharges": 0}, _dq(9.0))
+    assert not any("ยังไม่ลงรหัสโรคหลัก" in a["issue"] for a in out)
+
+
+def test_alert_high_readmission_names_top_diagnosis():
+    import queries
+    readmit = {"items": [{"code": "J441", "value": 4}]}
+    out = queries.alerts(_kpi(13.5), [], {"items": []}, {"waiting": 0}, {"late_discharges": 0}, _dq(0), readmit)
+    a = next(a for a in out if "Readmission" in a["issue"])
+    assert a["level"] == "high" and "J441" in a["issue"]
+
+
+def test_readmission_dx_without_code_is_labelled(monkeypatch):
+    import queries
+    monkeypatch.setattr(queries, "fetch", lambda sql: [{"icd10": None, "name": None, "cnt": 2},
+                                                       {"icd10": "J46", "name": "Status asthmaticus", "cnt": 1}])
+    r = queries.readmission_by_dx("2026-10-01", "2026-10-23", "all")
+    assert r["items"][0]["label"] == "ยังไม่ลงรหัสโรค" and r["items"][0]["code"] == "-"
+    assert r["items"][1]["bar"] == 50.0
+
+
+def test_discharge_quality_handles_zero_beds(fake_db):
+    import queries
+    q = queries.discharge_quality("2026-10-01", "2026-10-23", "all", 0)
+    assert q["turnover"] == 0.0 and q["period_occupancy"] == 0.0 and q["cmi"] == 0.0

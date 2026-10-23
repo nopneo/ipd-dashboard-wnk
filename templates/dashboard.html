@@ -412,6 +412,67 @@
     </section>
   </div>
 
+  <!-- ============================== 11. คุณภาพการจำหน่าย | 12. readmission ตามโรค -->
+  {% set dq = d.quality %}
+  <div class="row c2">
+
+    <section class="block">
+      <header><span class="no">11</span>
+        <span><span class="t">Discharge Quality</span>
+        <span class="st">คุณภาพการจำหน่ายและเวชระเบียน · จำหน่าย {{ dq.total }} ราย</span></span></header>
+      <div class="body">
+        <div class="qgrid">
+          {% for it in [dq.refer, dq.ama, dq.escape] %}
+          <div class="qt"><div class="l">{{ it.label }}</div>
+            <div class="v">{{ it.value }}<span class="u">{{ it.unit }}</span></div>
+            <div class="p">{{ it.pct }}% ของผู้จำหน่าย</div></div>
+          {% endfor %}
+          <div class="qt {{ 'warn' if dq.no_pdx.pct > 10 else '' }}"><div class="l">{{ dq.no_pdx.label }}</div>
+            <div class="v">{{ dq.no_pdx.value }}<span class="u">ราย</span></div>
+            <div class="p">{{ dq.no_pdx.pct }}% · เกณฑ์ ≤ 10%</div></div>
+          <div class="qt rw"><div class="l">CMI (AdjRW เฉลี่ย)</div>
+            <div class="v">{{ '%.2f' | format(dq.cmi) }}</div>
+            <div class="p">AdjRW รวม {{ dq.rw_sum }} · group แล้ว {{ dq.rw_n }}/{{ dq.total }} ราย ({{ dq.rw_pct }}%)</div></div>
+          <div class="qt"><div class="l">วันนอนรวม</div>
+            <div class="v">{{ '{:,}'.format(dq.patient_days | int) }}<span class="u">วัน</span></div>
+            <div class="p">ครองเตียงเฉลี่ยตลอดช่วง {{ dq.period_occupancy }}%</div></div>
+          <div class="qt"><div class="l">Bed Turnover</div>
+            <div class="v">{{ dq.turnover }}<span class="u">รอบ/เตียง</span></div>
+            <div class="p">จำหน่าย ÷ {{ dq.beds }} เตียง ใน {{ dq.days }} วัน</div></div>
+          <div class="qt"><div class="l">ผู้ป่วยเฉลี่ยต่อวัน</div>
+            <div class="v">{{ dq.daily_census }}<span class="u">ราย/วัน</span></div>
+            <div class="p">Average daily census · วันนอนรวม ÷ {{ dq.days }} วัน</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <header><span class="no">12</span>
+        <span><span class="t">Readmission by Diagnosis</span>
+        <span class="st">กลับมานอนซ้ำใน 30 วัน แยกตามโรคหลักครั้งแรก</span></span></header>
+      <div class="body">
+        {% if d.readmit['items'] %}
+        <div class="hbars">
+          {% for x in d.readmit['items'] %}
+          <div class="hb">
+            <span class="nm" title="{{ x.label }}">{{ x.label }}
+              {% if x.code != '-' %}<span class="code">[{{ x.code }}]</span>{% endif %}</span>
+            <span class="bar">
+              <span class="track"><span class="fill" style="width:{{ x.bar }}%;background:#e5484d"></span></span>
+              <span class="vl">{{ x.value }} ราย</span>
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="note">🔁 Readmission 30 วัน <b>{{ d.kpi.readmission_rate }}%</b>
+          {% if d.readmit.more %}· แสดง 5 กลุ่มโรคแรก{% endif %}</div>
+        {% else %}
+        <div class="note center">✅ ไม่มีผู้ป่วยกลับมานอนซ้ำภายใน 30 วัน</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
   <!-- ============================================================ footer -->
   <div class="foot">
     <div class="src"><b>แหล่งข้อมูล (Data Source)</b> —

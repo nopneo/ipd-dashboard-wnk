@@ -1,10 +1,10 @@
 # IPD Dashboard — แดชบอร์ดบริหารจัดการผู้ป่วยใน (HOSxP)
 
-> **เวอร์ชัน 1.0.0** — ใช้ได้ทุกโรงพยาบาลที่ใช้ HOSxP · ติดตั้ง: [INSTALL.md](INSTALL.md) ·
+> **เวอร์ชัน 1.1.0** — ใช้ได้ทุกโรงพยาบาลที่ใช้ HOSxP · ติดตั้ง: [INSTALL.md](INSTALL.md) ·
 > สร้างชุดติดตั้ง `python build_dist.py` → `dist/ipd_dashboard-<เวอร์ชัน>.zip` ·
 > ความปลอดภัย: [SECURITY.md](SECURITY.md) · การเปลี่ยนแปลง: [CHANGELOG.md](CHANGELOG.md)
 
-รายงานอินโฟกราฟิก 10 บล็อก ดึงข้อมูลสดจาก HOSxP (MariaDB `hos`) โทนลาเวนเดอร์/ม่วง
+รายงานอินโฟกราฟิก 12 บล็อก ดึงข้อมูลสดจาก HOSxP (MariaDB `hos`) โทนลาเวนเดอร์/ม่วง
 ใช้ได้ทั้งเป็น **เว็บ live** (เปิดจากมือถือได้ เพิ่มลงหน้าจอโฮมเป็นไอคอนแอป) และ **กดส่งออกเป็น JPG / PNG / PDF**
 
 ## วิธีใช้
@@ -32,6 +32,8 @@ python render.py --d1 2026-10-01 --d2 2026-10-15 --fmt jpg
 | 8 | Waiting for Bed | admit แล้วยังไม่มีแถวเตียงเปิดใน `iptadm` |
 | 9 | Patient Profile | `pttype`, `patient.birthday`, `iptdiag` (`diagtype='1'`) join `icd101` |
 | 10 | Alert & Action | คำนวณจากเกณฑ์เฝ้าระวังในโค้ด (`queries.alerts`) |
+| 11 | Discharge Quality | `ipt.dchtype` (ส่งต่อ/ไม่สมัครใจอยู่/หนี), ไม่มี `iptdiag` โรคหลัก, `ipt.adjrw` (CMI), วันนอนรวม, Bed Turnover |
+| 12 | Readmission by Diagnosis | จำหน่ายในช่วงแล้วกลับมา admit ใน 30 วัน × โรคหลักครั้งแรก (`iptdiag` + `icd101`) |
 
 ตัวเลขทุกตัวมาจากฐานข้อมูลจริง ไม่มีค่าสมมติ — ช่องที่ HOSxP ไม่ได้บันทึกถูกแทนด้วยตัวชี้วัดที่มีข้อมูลจริง
 

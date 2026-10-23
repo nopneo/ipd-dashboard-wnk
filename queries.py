@@ -361,9 +361,80 @@ def patient_profile(d1, d2, ward):
             "ages": age_items, "age_total": a_total, "dx": dx_items}
 
 
+# ------------------------------------------- 11. คุณภาพการจำหน่าย / เวชระเบียน
+
+#: รหัส dchtype มาตรฐานของ HOSxP (ตาราง dchtype)
+DCH_REFER, DCH_AGAINST_ADVICE, DCH_ESCAPE = "04", "02", "03"
+
+
+def discharge_quality(d1, d2, ward, total_beds):
+    """ส่งต่อ / ไม่สมัครใจอยู่ / หนี · เวชระเบียนยังไม่ลงรหัสโรคหลัก · AdjRW / CMI · วันนอนรวม / bed turnover"""
+    wc = _ward_cond(ward)
+    r = fetch_one(f"""
+        select count(*) total,
+               sum(i.dchtype = '{DCH_REFER}') refer,
+               sum(i.dchtype = '{DCH_AGAINST_ADVICE}') ama,
+               sum(i.dchtype = '{DCH_ESCAPE}') escape,
+               sum(not exists(select 1 from iptdiag x where x.an = i.an and x.diagtype = '1')) no_pdx,
+               sum(i.adjrw > 0) rw_n, sum(if(i.adjrw > 0, i.adjrw, 0)) rw_sum
+        from ipt i where i.dchdate between '{d1}' and '{d2}' {wc}""")
+    total = num(r.get("total"))
+    rw_n, rw_sum = num(r.get("rw_n")), num(r.get("rw_sum"))
+
+    # วันนอนรวม = จำนวนวันที่ผู้ป่วยแต่ละรายนอนอยู่ "ภายในช่วงที่เลือก" (นับวันรับ ไม่นับวันจำหน่าย)
+    days = (date.fromisoformat(d2) - date.fromisoformat(d1)).days + 1
+    pd = num(fetch_one(f"""
+        select sum(greatest(datediff(least(ifnull(i.dchdate, '{d2}' + interval 1 day), '{d2}' + interval 1 day),
+                                     greatest(i.regdate, '{d1}')), 0)) d
+        from ipt i where i.regdate <= '{d2}' and (i.dchdate is null or i.dchdate >= '{d1}') {wc}""").get("d"))
+
+    def item(key, label, v, unit="ราย"):
+        return {"key": key, "label": label, "value": v, "unit": unit, "pct": _pct(v, total)}
+
+    refer, ama, esc, no_pdx = (num(r.get(k)) for k in ("refer", "ama", "escape", "no_pdx"))
+    return {
+        "total": total,
+        "refer": item("refer", "ส่งต่อ (Refer out)", refer),
+        "ama": item("ama", "ไม่สมัครใจอยู่", ama),
+        "escape": item("escape", "หนีกลับ", esc),
+        "no_pdx": item("no_pdx", "ยังไม่ลงรหัสโรคหลัก", no_pdx),
+        "rw_n": rw_n, "rw_pct": _pct(rw_n, total),
+        "rw_sum": round(rw_sum, 1),
+        "cmi": round(rw_sum / rw_n, 2) if rw_n else 0.0,
+        "patient_days": pd,
+        "daily_census": round(pd / days, 1) if days else 0.0,
+        "period_occupancy": _pct(pd, total_beds * days),
+        "turnover": round(total / total_beds, 1) if total_beds else 0.0,
+        "beds": total_beds, "days": days,
+    }
+
+
+# ------------------------------------------- 12. Readmission ตามกลุ่มโรค
+
+def readmission_by_dx(d1, d2, ward, limit=5):
+    """ผู้ป่วยที่จำหน่ายในช่วงแล้วกลับมานอนซ้ำภายใน 30 วัน แยกตามโรคหลักของครั้งแรก (Top 5)"""
+    wc = _ward_cond(ward)
+    rows = fetch(f"""
+        select d.icd10, c.name, count(*) cnt
+        from ipt i
+             left join iptdiag d on d.an = i.an and d.diagtype = '1'
+             left join icd101 c on c.code = d.icd10
+        where i.dchdate between '{d1}' and '{d2}' {wc}
+          and exists(select 1 from ipt r where r.hn = i.hn and r.an <> i.an
+                     and r.regdate > i.dchdate and r.regdate <= i.dchdate + interval 30 day)
+        group by d.icd10, c.name order by cnt desc limit {int(limit) + 1}""")
+    # ค่าแทน NULL ใส่ฝั่ง Python — สตริงไทยใน SQL เพี้ยนเพราะ connection เป็น tis-620
+    items = [{"label": x["name"] or ("ยังไม่ลงรหัสโรค" if not x["icd10"] else x["icd10"]),
+              "code": x["icd10"] or "-", "value": num(x["cnt"])} for x in rows[:limit]]
+    top = max((i["value"] for i in items), default=1) or 1
+    for it in items:
+        it["bar"] = _pct(it["value"], top)
+    return {"items": items, "shown": sum(i["value"] for i in items), "more": len(rows) > limit}
+
+
 # ------------------------------------------------------ 10. Alert & Action
 
-def alerts(kpi, beds, los, wait, dch):
+def alerts(kpi, beds, los, wait, dch, dq=None, readmit=None):
     """สร้างรายการเฝ้าระวังจากเกณฑ์มาตรฐาน — คำนวณจากตัวเลขจริงทั้งหมด"""
     out = []
     for b in beds:
@@ -381,16 +452,24 @@ def alerts(kpi, beds, los, wait, dch):
     if dch["late_discharges"] > 0:
         out.append({"level": "mid", "issue": f"จำหน่ายหลัง 16:00 น. {dch['late_discharges']} ราย",
                     "where": "ภาพรวม", "status": "เฝ้าระวัง", "action": "ปรับกระบวนการจำหน่าย"})
-    if kpi["readmission_rate"] > 5:
+    if kpi["readmission_rate"] > 10:
+        top = (readmit or {}).get("items") or []
+        why = f" (มากสุด: {top[0]['code']})" if top and top[0]["code"] != "-" else ""
+        out.append({"level": "high", "issue": f"Readmission 30 วัน {kpi['readmission_rate']}%{why}",
+                    "where": "ผู้ป่วยใน", "status": "เร่งดำเนินการ", "action": "ทบทวนแผนจำหน่ายกลุ่มโรคที่กลับมาซ้ำ"})
+    elif kpi["readmission_rate"] > 5:
         out.append({"level": "mid", "issue": f"Readmission 30 วัน {kpi['readmission_rate']}%",
                     "where": "ผู้ป่วยใน", "status": "ติดตาม", "action": "วิเคราะห์สาเหตุรายราย"})
+    if dq and dq["no_pdx"]["pct"] > 10:
+        out.append({"level": "mid", "issue": f"ยังไม่ลงรหัสโรคหลัก {dq['no_pdx']['value']} ราย ({dq['no_pdx']['pct']}%)",
+                    "where": "เวชระเบียน", "status": "เฝ้าระวัง", "action": "เร่งสรุปชาร์ตและลงรหัส"})
     if kpi["occupancy_rate"] >= 85:
         out.append({"level": "high", "issue": f"ครองเตียงรวม {kpi['occupancy_rate']}%",
                     "where": "ทั้งโรงพยาบาล", "status": "เร่งดำเนินการ", "action": "เปิดเตียงสำรอง"})
     if not out:
         out.append({"level": "ok", "issue": "ไม่พบประเด็นเกินเกณฑ์เฝ้าระวัง",
                     "where": "-", "status": "ปกติ", "action": "ติดตามตามรอบปกติ"})
-    return out[:6]
+    return out[:7]
 
 
 # ------------------------------------------------------------- ประกอบร่าง
@@ -422,6 +501,8 @@ def build(d1=None, d2=None, ward="all"):
     los = los_distribution(ward)
     wait = waiting_for_bed(d1, d2, ward)
     dch = discharge_planning(d1, d2, ward)
+    dq = discharge_quality(d1, d2, ward, kpi["total_beds"])
+    readmit = readmission_by_dx(d1, d2, ward)
 
     data = {
         "generated_at": _thai_datetime(),
@@ -437,7 +518,9 @@ def build(d1=None, d2=None, ward="all"):
         "discharge": dch,
         "wait": wait,
         "profile": patient_profile(d1, d2, ward),
-        "alerts": alerts(kpi, beds, los, wait, dch),
+        "quality": dq,
+        "readmit": readmit,
+        "alerts": alerts(kpi, beds, los, wait, dch, dq, readmit),
     }
     if CACHE_TTL:
         _cache[key] = (time.time(), data)
