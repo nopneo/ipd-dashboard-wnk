@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IPD Dashboard — {{ hospital }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+{#- ไอคอนแอปเวลาเพิ่มลงหน้าจอโฮมมือถือ (Android อ่าน manifest, iOS อ่าน apple-touch-icon) -#}
+<link rel="manifest" href="{{ url_for('manifest') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icon/apple-touch-icon.png') }}">
+<link rel="icon" type="image/png" sizes="32x32"
+      href="{{ url_for('static', filename='icon/favicon-32.png') }}">
+<link rel="icon" type="image/png" sizes="192x192"
+      href="{{ url_for('static', filename='icon/icon-192.png') }}">
+<meta name="theme-color" content="#5b3fd6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="IPD Dashboard">
+<meta name="mobile-web-app-capable" content="yes">
+</head>
+
+{#- โดนัท SVG: items = [{label,value,pct,color}] -#}
+{% macro donut(items, total, unit='ราย', size=104, vsize=9) %}
+{% set r = 15.915 %}
+<svg viewBox="0 0 42 42" width="{{ size }}" height="{{ size }}" style="flex:none">
+  <circle cx="21" cy="21" r="{{ r }}" fill="none" stroke="#efe9ff" stroke-width="7.4"></circle>
+  {% set ns = namespace(off=25) %}
+  {% for it in items %}{% if it.pct > 0 %}
+  <circle cx="21" cy="21" r="{{ r }}" fill="none" stroke="{{ it.color }}" stroke-width="7.4"
+          stroke-dasharray="{{ it.pct }} {{ 100 - it.pct }}"
+          stroke-dashoffset="{{ ns.off }}" transform="rotate(-90 21 21)"></circle>
+  {% set ns.off = ns.off - it.pct %}
+  {% endif %}{% endfor %}
+  <text x="21" y="{{ 21.4 if unit else 23 }}" text-anchor="middle" font-size="{{ vsize }}"
+        font-family="Kanit" font-weight="700" fill="{{ '#2e2a78' if unit else '#ffffff' }}">{{ total }}</text>
+  {% if unit %}<text x="21" y="26.6" text-anchor="middle" font-size="4"
+        font-family="Sarabun" fill="#8a84b5">{{ unit }}</text>{% endif %}
+</svg>
+{% endmacro %}
+
+{% macro legend(items) %}
+<div class="legend">
+  {% for it in items %}
+  <div class="li"><span class="dot" style="background:{{ it.color }}"></span>
+    <span class="nm" title="{{ it.label }}">{{ it.label }}</span>
+    <span class="vl">{{ it.value }}</span>
+    <span class="pc">({{ it.pct }}%)</span></div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{#- good_down=true คือตัวชี้วัดที่ "ลดแล้วดี" (ALOS, Readmission) -#}
+{% macro delta(v, good_down=false) %}
+  {% if v is not none %}
+    <div class="d">{{ '▲' if v >= 0 else '▼' }} {{ v|abs }}%
+      <span class="vs">vs. ช่วงก่อนหน้า</span></div>
+  {% else %}<div class="d"><span class="vs">ไม่มีข้อมูลเทียบ</span></div>{% endif %}
+{% endmacro %}
+
+<body class="{{ 'print-mode' if print_mode }}">
+
+<form class="toolbar" method="get">
+  <label>ตั้งแต่ <input type="date" name="d1" value="{{ d.d1 }}"></label>
+  <label>ถึง <input type="date" name="d2" value="{{ d.d2 }}"></label>
+  <select name="ward">
+    <option value="all">ทุก Ward</option>
+    {% for w in d.wards %}
+    <option value="{{ w.ward }}" {{ 'selected' if d.ward == w.ward }}>{{ w.name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">ดูข้อมูล</button>
+  {#- ส่งออกช่วงวันที่/ward ที่กำลังดูอยู่ (ไม่ใช่ค่าที่พิมพ์ค้างในช่อง) -#}
+  {% set q = '?d1=' ~ d.d1 ~ '&d2=' ~ d.d2 ~ '&ward=' ~ d.ward %}
+  {% if export_enabled %}
+  <a class="dl" href="{{ url_for('export', fmt='jpg') }}{{ q }}">⬇ JPG</a>
+  <a class="dl" href="{{ url_for('export', fmt='png') }}{{ q }}">⬇ PNG</a>
+  <a class="dl" href="{{ url_for('export', fmt='pdf') }}{{ q }}">⬇ PDF</a>
+  <span class="hint">ส่งออกใช้เวลา ~10 วินาที</span>
+  {% endif %}
+  <span style="color:#8a84b5">ข้อมูล ณ {{ d.generated_at }}</span>
+</form>
+
+{#- การส่งออกใช้เวลา ~10 วินาที (chromium ถ่ายภาพหน้าเว็บ) ถ้าไม่บอกอะไรเลย
+    ผู้ใช้จะนึกว่าปุ่มเสียแล้วกดซ้ำจนคิวตัน จึงขึ้นสถานะไว้จนกว่าไฟล์จะเริ่มโหลด -#}
+<script>
+(function () {
+  var bar = document.querySelector('.toolbar');
+  if (!bar) return;
+  var note = document.createElement('span');
+  note.className = 'dl-note';
+  note.hidden = true;
+  bar.appendChild(note);
+
+  bar.querySelectorAll('a.dl').forEach(function (a) {
+    a.addEventListener('click', function () {
+      if (a.dataset.busy) return;
+      a.dataset.busy = '1';
+      a.style.opacity = .5;
+      note.textContent = '⏳ กำลังสร้างไฟล์ ' + a.textContent.replace('⬇', '').trim() + ' …';
+      note.hidden = false;
+      // ไม่มี event บอกว่าไฟล์เริ่มดาวน์โหลด จึงปลดล็อกตามเวลาแทน
+      setTimeout(function () {
+        delete a.dataset.busy;
+        a.style.opacity = 1;
+        note.hidden = true;
+      }, 25000);
+    });
+  });
+})();
+</script>
+
+<div class="sheet">
+
+  <!-- ============================================================ hero -->
+  <div class="hero">
+    {% if hero_url %}<div class="bg"><img src="{{ hero_url }}" alt=""></div>{% endif %}
+    <div class="logo"><img src="{{ logo_url }}" alt="ตรา{{ hospital }}"></div>
+    <div>
+      <div class="name">{{ hospital }}</div>
+      {% if hospital_en %}<div class="name-en">{{ hospital_en }}</div>{% endif %}
+      <div class="ttl">IPD Dashboard <span>· แดชบอร์ดบริหารจัดการผู้ป่วยใน</span></div>
+      <div class="quote">“เห็นผู้ป่วยทุก Ward รู้สถานะทุกเตียง มองเห็นจุดติดขัดตั้งแต่ Admit ถึง Discharge”</div>
+    </div>
+    <div class="meta">
+      <span class="a">{{ d.period_label }}</span>
+      <div class="b">ข้อมูลจาก HOSxP<br>ณ {{ d.generated_at }}</div>
+    </div>
+  </div>
+
+  <!-- ====================================================== 1. KPI -->
+  <section class="block">
+    <header><span class="no">1</span>
+      <span><span class="t">IPD KPI Summary</span> <span class="st">ภาพรวมผู้ป่วยใน</span></span>
+      <span class="filters">
+        <span class="chip">📅 {{ d.period_label }}</span>
+        <span class="chip">🛏 {% if d.ward == 'all' %}ทุก Ward{% else %}
+          {%- for w in d.wards if w.ward == d.ward %}{{ w.name }}{% endfor %}{% endif %}</span>
+      </span>
+    </header>
+    <div class="body">
+      <div class="kpis">
+        <div class="kpi g-purple"><span class="e">🧑‍🤝‍🧑</span>
+          <div class="l">ผู้ป่วยในปัจจุบัน<small>Current Inpatients</small></div>
+          <div class="v">{{ d.kpi.current_inpatients }}</div><div class="u">ราย</div>
+        </div>
+        <div class="kpi g-blue"><span class="e">🛬</span>
+          <div class="l">รับใหม่<small>Admissions</small></div>
+          <div class="v">{{ d.kpi.admissions }}</div><div class="u">ราย</div>
+          {{ delta(d.kpi.admissions_delta) }}
+        </div>
+        <div class="kpi g-teal"><span class="e">🛫</span>
+          <div class="l">จำหน่าย<small>Discharges</small></div>
+          <div class="v">{{ d.kpi.discharges }}</div><div class="u">ราย</div>
+          {{ delta(d.kpi.discharges_delta) }}
+        </div>
+        <div class="kpi g-navy"><span class="e">🛏</span>
+          <div class="l">เตียงทั้งหมด<small>Total Beds — ตามกรอบ</small></div>
+          <div class="v">{{ d.kpi.total_beds }}</div><div class="u">เตียง</div>
+        </div>
+        <div class="kpi occ g-pink">
+          {{ donut([{'pct': d.kpi.occupancy_rate, 'color': '#ffffff'}],
+                   d.kpi.occupancy_rate ~ '%', '', 76, 8.4) }}
+          <div class="side"><span class="h">อัตราครองเตียง</span>
+            ใช้ไป {{ d.kpi.beds_used }} เตียง<br>
+            ว่าง {{ d.kpi.beds_free }} เตียง</div>
+        </div>
+        <div class="kpi g-orange"><span class="e">⏳</span>
+          <div class="l">ระยะนอนเฉลี่ย<small>Avg. Length of Stay</small></div>
+          <div class="v">{{ d.kpi.alos }}</div><div class="u">วัน</div>
+          {{ delta(d.kpi.alos_delta, good_down=true) }}
+        </div>
+        <div class="kpi g-green"><span class="e">🔁</span>
+          <div class="l">กลับมานอนซ้ำ<small>Readmission 30 วัน</small></div>
+          <div class="v">{{ d.kpi.readmission_rate }}%</div><div class="u">ของผู้จำหน่าย</div>
+          {{ delta(d.kpi.readmission_delta, good_down=true) }}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== 2. trend | 3. beds | 4. status -->
+  <div class="row c3">
+
+    <section class="block">
+      <header><span class="no">2</span>
+        <span><span class="t">Admission &amp; Discharge Trend</span>
+        <span class="st">รายเดือน</span></span></header>
+      <div class="body">
+        {% set mx = d.trend | map(attribute='admissions') | list
+                  + d.trend | map(attribute='discharges') | list %}
+        {% set top = ((mx | max) or 1) if mx else 1 %}
+        <div style="display:flex;gap:18px;font-size:13px;margin-bottom:6px;color:#6b628f">
+          <span><i style="display:inline-block;width:20px;height:9px;border-radius:5px;background:#6d4ee8;vertical-align:middle;margin-right:6px"></i>รับใหม่</span>
+          <span><i style="display:inline-block;width:20px;height:9px;border-radius:5px;background:#14b8a6;vertical-align:middle;margin-right:6px"></i>จำหน่าย</span>
+          <span><i style="display:inline-block;width:20px;height:3px;background:#e2478f;vertical-align:middle;margin-right:6px"></i>คงพยาบาลสิ้นเดือน</span>
+        </div>
+        <svg viewBox="0 0 360 200" width="100%" height="212">
+          {% for g in range(5) %}
+            {% set y = 18 + g * 36 %}
+            <line x1="28" y1="{{ y }}" x2="356" y2="{{ y }}" stroke="#eeeaf8"></line>
+            <text x="24" y="{{ y + 3 }}" font-size="8" font-family="Sarabun" fill="#a89fd0"
+                  text-anchor="end">{{ (top * (4 - g) / 4) | round | int }}</text>
+          {% endfor %}
+          {% set bw = 328 / (d.trend | length) %}
+          {% for t in d.trend %}
+            {% set cx = 28 + bw * loop.index0 %}
+            {% set ha = 144 * t.admissions / top %}
+            {% set hd = 144 * t.discharges / top %}
+            <rect x="{{ cx + bw*0.16 }}" y="{{ 162 - ha }}" width="{{ bw*0.3 }}" height="{{ ha }}"
+                  rx="2.5" fill="#6d4ee8"></rect>
+            <rect x="{{ cx + bw*0.5 }}" y="{{ 162 - hd }}" width="{{ bw*0.3 }}" height="{{ hd }}"
+                  rx="2.5" fill="#14b8a6"></rect>
+            <text x="{{ cx + bw*0.5 }}" y="176" font-size="9" font-family="Sarabun"
+                  fill="#8a84b5" text-anchor="middle">{{ t.label }}</text>
+          {% endfor %}
+          {% set cmax = (d.trend | map(attribute='census') | max) or 1 %}
+          <polyline fill="none" stroke="#e2478f" stroke-width="2.2" stroke-linejoin="round"
+            points="{% for t in d.trend %}{{ 28 + bw*(loop.index0 + 0.5) }},{{ 158 - 60 * t.census / cmax }} {% endfor %}"></polyline>
+          {% for t in d.trend %}
+            <circle cx="{{ 28 + bw*(loop.index0 + 0.5) }}" cy="{{ 158 - 60 * t.census / cmax }}"
+                    r="2.8" fill="#fff" stroke="#e2478f" stroke-width="1.6"></circle>
+            {% if loop.last %}<text x="{{ 28 + bw*(loop.index0 + 0.5) }}"
+                  y="{{ 150 - 60 * t.census / cmax }}" font-size="9.5" font-family="Kanit"
+                  font-weight="700" fill="#e2478f" text-anchor="end">{{ t.census }}</text>{% endif %}
+          {% endfor %}
+        </svg>
+        {% set n = d.trend | length %}
+        <div class="note">📈 เฉลี่ย {{ n }} เดือนล่าสุด — รับใหม่
+          <b>{{ ((d.trend | sum(attribute='admissions')) / n) | round | int }}</b> ราย/เดือน ·
+          จำหน่าย <b>{{ ((d.trend | sum(attribute='discharges')) / n) | round | int }}</b> ราย/เดือน</div>
+      </div>
+    </section>
+
+    <section class="block">
+      <header><span class="no">3</span>
+        <span><span class="t">Bed Occupancy by Ward</span>
+        <span class="st">อัตราครองเตียงราย Ward</span></span></header>
+      <div class="body">
+        <table class="t">
+          <tr><th>Ward</th><th>เตียงทั้งหมด</th><th>ใช้ไป</th><th>ว่าง</th><th>Occupancy</th></tr>
+          {% for b in d.beds %}
+          <tr>
+            <td class="l">{{ b.name }}</td>
+            <td>{{ b.total }}</td>
+            <td style="color:{{ '#b91c1c' if b.occupancy >= 90 else '#2b2b55' }}">{{ b.used }}</td>
+            <td>{{ b.free }}</td>
+            <td><span class="pp {{ 'bad' if b.occupancy >= 90 else ('watch' if b.occupancy >= 75 else ('good' if b.occupancy >= 30 else 'flat')) }}">{{ b.occupancy }}%</span></td>
+          </tr>
+          {% endfor %}
+          <tr class="tot">
+            <td class="l">รวม (เตียงตามกรอบ)</td>
+            <td>{{ d.kpi.total_beds }}</td><td>{{ d.kpi.beds_used }}</td><td>{{ d.kpi.beds_free }}</td>
+            <td><span class="pp">{{ d.kpi.occupancy_rate }}%</span></td>
+          </tr>
+        </table>
+        {% set busiest = (d.beds | sort(attribute='occupancy') | list | last) if d.beds else none %}
+        <div class="note">🛏 อัตราครองเตียงภาพรวมคิดจาก<b>เตียงตามกรอบ {{ d.kpi.total_beds }} เตียง</b>
+          (เตียงว่าง {{ d.kpi.beds_free }}){% if busiest %} · ครองเตียงรายตึกสูงสุด:
+          {{ busiest.name }} <b>{{ busiest.occupancy }}%</b>{% endif %}</div>
+      </div>
+    </section>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <section class="block" style="margin-top:0">
+        <header><span class="no">4</span>
+          <span><span class="t">Patient Status</span>
+          <span class="st">สถานะผู้ป่วยในปัจจุบัน</span></span></header>
+        <div class="body">
+          <div class="donut-wrap">
+            {{ donut(d.status['items'], d.status.total) }}
+            {{ legend(d.status['items']) }}
+          </div>
+        </div>
+      </section>
+
+      <section class="block" style="margin-top:0">
+        <header><span class="no">5</span>
+          <span><span class="t">Length of Stay</span>
+          <span class="st">วันนอนของผู้ป่วยที่ยังอยู่</span></span></header>
+        <div class="body">
+          {% set lmax = (d.los['items'] | map(attribute='value') | max) or 1 %}
+          <div class="bars">
+            {% for it in d.los['items'] %}
+            <div class="b">
+              <div class="n">{{ it.value }}</div><div class="p">({{ it.pct }}%)</div>
+              <div class="fill" style="height:{{ (80 * it.value / lmax) | round(1) }}px;background:{{ it.color }}"></div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="bars-x">
+            {% for it in d.los['items'] %}<span>{{ it.label }}</span>{% endfor %}
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ====================== 6. flow | 7. discharge | 8. waiting bed -->
+  <div class="row c3b">
+
+    <section class="block">
+      <header><span class="no">6</span>
+        <span><span class="t">Patient Flow</span>
+        <span class="st">จำนวนผู้ป่วยในแต่ละขั้นตอน (Snapshot ปัจจุบัน)</span></span></header>
+      <div class="body">
+        <div class="flow">
+          {% set icons = {'clipboard':'📋','bed':'🛏','nurse':'🧑‍⚕️','flask':'🧪','doc':'📄'} %}
+          {% for f in d.flow %}
+          <div class="step">
+            <div class="ic">{{ icons[f.icon] }}</div>
+            <div class="nm">{{ f.label }}</div><div class="sb">{{ f.sub }}</div>
+            <div class="v">{{ f.value }}</div>
+          </div>
+          {% if not loop.last %}<div class="arrow">›</div>{% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <header><span class="no">7</span>
+        <span><span class="t">Discharge Planning</span>
+        <span class="st">สถานะการจำหน่ายในช่วงที่เลือก</span></span></header>
+      <div class="body">
+        <div class="donut-wrap">
+          {{ donut(d.discharge['items'], d.discharge.total) }}
+          {{ legend(d.discharge['items']) }}
+        </div>
+        <div class="note">🕐 เวลาจำหน่ายเฉลี่ย <b>{{ d.discharge.avg_discharge_time }} น.</b>
+          · จำหน่ายหลัง 16:00 น. <b>{{ d.discharge.late_discharges }}</b> ราย</div>
+      </div>
+    </section>
+
+    <section class="block">
+      <header><span class="no">8</span>
+        <span><span class="t">Waiting for Bed</span>
+        <span class="st">ผู้ป่วยรอเตียง</span></span></header>
+      <div class="body" style="text-align:center;display:flex;flex-direction:column;justify-content:center">
+        <div style="font-size:38px">🛏</div>
+        <div style="font-family:Kanit;font-weight:700;font-size:52px;color:#6d4ee8;line-height:1.05">{{ d.wait.waiting }}</div>
+        <div style="font-size:13px;color:#8a84b5">ราย (admit แล้วยังไม่ได้เตียง)</div>
+        <div class="note center">🕐 รอเตียงเฉลี่ย <b>{{ d.wait.avg_wait_hours }} ชั่วโมง</b></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============================== 9. profile | 10. alert -->
+  <div class="row c2">
+
+    <section class="block">
+      <header><span class="no">9</span>
+        <span><span class="t">Patient Profile</span>
+        <span class="st">สัดส่วนผู้ป่วยรับใหม่ในช่วงที่เลือก ({{ d.profile.total }} ราย)</span></span></header>
+      <div class="body">
+        <div class="profile">
+          <div>
+            <div class="mini-h">🎫 ตามสิทธิการรักษา</div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+              {{ donut(d.profile.rights, d.profile.total, 'ราย', 96) }}
+              {{ legend(d.profile.rights) }}
+            </div>
+          </div>
+          <div>
+            <div class="mini-h">👥 ตามช่วงอายุ</div>
+            {% set amax = (d.profile.ages | map(attribute='value') | max) or 1 %}
+            <div class="bars" style="height:118px">
+              {% for a in d.profile.ages %}
+              <div class="b"><div class="n">{{ a.pct }}%</div>
+                <div class="fill" style="height:{{ (70 * a.value / amax) | round(1) }}px;background:{{ a.color }}"></div></div>
+              {% endfor %}
+            </div>
+            <div class="bars-x">{% for a in d.profile.ages %}<span>{{ a.label }}</span>{% endfor %}</div>
+          </div>
+          <div>
+            <div class="mini-h">🩺 กลุ่มโรคหลัก (Top 5)</div>
+            <div class="hbars">
+              {% for x in d.profile.dx %}
+              <div class="hb">
+                <span class="nm" title="{{ x.label }}">{{ x.label }}
+                  <span class="code">[{{ x.code }}]</span></span>
+                <span class="bar">
+                  <span class="track"><span class="fill" style="width:{{ x.bar }}%"></span></span>
+                  <span class="vl">{{ x.value }} ราย</span>
+                </span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block alert-card">
+      <header><span class="no">10</span>
+        <span><span class="t">Alert &amp; Action</span>
+        <span class="st">รายการที่ต้องติดตาม</span></span></header>
+      <div class="body">
+        <table class="t">
+          <tr><th>ประเด็น</th><th>หน่วยงาน</th><th>สถานะ</th><th>Action</th></tr>
+          {% for a in d.alerts %}
+          <tr>
+            <td class="l"><span class="lv">{{ '🚨' if a.level == 'high' else ('⚠️' if a.level == 'mid' else '✅') }}</span>
+              {{ a.issue }}</td>
+            <td>{{ a.where }}</td>
+            <td><span class="pp {{ 'bad' if a.level == 'high' else ('watch' if a.level == 'mid' else 'good') }}">{{ a.status }}</span></td>
+            <td class="l">{{ a.action }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============================================================ footer -->
+  <div class="foot">
+    <div class="src"><b>แหล่งข้อมูล (Data Source)</b> —
+      HOSxP: ipt / iptadm / ward / iptdiag / patient / pttype / dchstts · MariaDB</div>
+    <div class="tag">“ข้อมูลดี โรงพยาบาลดีขึ้น<br>ผู้ป่วยได้รับการดูแลที่ดีขึ้น”</div>
+  </div>
+  <div class="appinfo">
+    <span><b>IPD Dashboard</b> เวอร์ชัน {{ version }}</span>
+    <span>📞 ติดต่อ: {{ contact }}</span>
+    {% if dev_contact and dev_contact != contact %}<span>🛠 ผู้พัฒนา: {{ dev_contact }}</span>{% endif %}
+  </div>
+
+</div>
+</body>
+</html>

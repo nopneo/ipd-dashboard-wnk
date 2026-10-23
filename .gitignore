@@ -1,0 +1,18 @@
+.env
+out/
+__pycache__/
+*.pyc
+dist/
+.venv/
+.pytest_cache/
+
+# เฉพาะโรงพยาบาลผู้พัฒนา (รพ.วังน้ำเขียว) — ไม่ขึ้น GitHub
+deploy_ssh.py
+deploy.ps1
+DEPLOY_WNK.md
+.claude/
+static/img/hospital_logo.png
+static/img/hero.jpg
+/logoapp.png
+# คลิปแนะนำ + ภาพหน้าจอจริงที่ถ่ายมาทำคลิป
+video/
