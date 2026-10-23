@@ -328,7 +328,8 @@
           {{ legend(d.discharge['items']) }}
         </div>
         <div class="note">🕐 เวลาจำหน่ายเฉลี่ย <b>{{ d.discharge.avg_discharge_time }} น.</b>
-          · จำหน่ายหลัง 16:00 น. <b>{{ d.discharge.late_discharges }}</b> ราย</div>
+          · จำหน่ายหลัง {{ d.discharge.late_cutoff }} น. <b>{{ d.discharge.late_discharges }}</b> ราย
+          <span class="nt">(เฉพาะแพทย์อนุญาตให้กลับ)</span></div>
       </div>
     </section>
 
@@ -396,14 +397,15 @@
         <span><span class="t">Alert &amp; Action</span>
         <span class="st">รายการที่ต้องติดตาม</span></span></header>
       <div class="body">
-        <table class="t">
-          <tr><th>ประเด็น</th><th>หน่วยงาน</th><th>สถานะ</th><th>Action</th></tr>
+        <table class="t alerts">
+          <colgroup><col style="width:40%"><col><col><col style="width:34%"></colgroup>
+          <tr><th>ประเด็น</th><th class="w">หน่วยงาน</th><th>สถานะ</th><th>Action</th></tr>
           {% for a in d.alerts %}
           <tr>
             <td class="l"><span class="lv">{{ '🚨' if a.level == 'high' else ('⚠️' if a.level == 'mid' else '✅') }}</span>
-              {{ a.issue }}</td>
-            <td>{{ a.where }}</td>
-            <td><span class="pp {{ 'bad' if a.level == 'high' else ('watch' if a.level == 'mid' else 'good') }}">{{ a.status }}</span></td>
+              {{ a.issue }}<small class="wm">{{ a.where }}</small></td>
+            <td class="nw w">{{ a.where }}</td>
+            <td class="nw"><span class="pp {{ 'bad' if a.level == 'high' else ('watch' if a.level == 'mid' else 'good') }}">{{ a.status }}</span></td>
             <td class="l">{{ a.action }}</td>
           </tr>
           {% endfor %}

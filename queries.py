@@ -5,6 +5,7 @@
 """
 
 import os
+import re
 from datetime import date, timedelta
 
 from db import fetch, fetch_one, num
@@ -253,6 +254,12 @@ def patient_flow(ward):
 
 # -------------------------------------------- 7. การจำหน่าย + เวลาจำหน่าย
 
+#: dchtype 01 = With Approval (แพทย์อนุญาตให้กลับ) · เวลาที่ถือว่าจำหน่ายช้า (ตั้งได้ด้วย IPD_LATE_DISCHARGE)
+DCH_APPROVED = "01"
+_late = os.getenv("IPD_LATE_DISCHARGE", "16:00")
+LATE_DISCHARGE = (_late if re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", _late) else "16:00") + ":00"
+
+
 def discharge_planning(d1, d2, ward):
     wc = _ward_cond(ward)
     rows = fetch(f"""
@@ -271,15 +278,18 @@ def discharge_planning(d1, d2, ward):
     if other > 0:
         items.append({"label": "อื่น ๆ", "value": other, "pct": _pct(other, total), "color": "#94a3b8"})
 
+    # เวลาจำหน่ายเป็นเรื่องกระบวนการ จึงนับเฉพาะ "แพทย์อนุญาตให้กลับ" (dchtype 01)
+    # ไม่รวมเสียชีวิต / ส่งต่อ / หนี ที่เกิดได้ทุกเวลา · "หลัง 16:00" = เกิน 16:00:00 (16:00 ตรงไม่นับ)
     t = fetch_one(f"""
         select sec_to_time(avg(time_to_sec(i.dchtime))) avg_time,
-               sum(i.dchtime >= '16:00:00') late
+               sum(i.dchtime > '{LATE_DISCHARGE}') late
         from ipt i where i.dchdate between '{d1}' and '{d2}'
-              and i.dchtime is not null {wc}""")
+              and i.dchtime is not null and i.dchtype = '{DCH_APPROVED}' {wc}""")
     avg_time = str(t.get("avg_time") or "")[:5]
     return {"total": total, "items": items,
             "avg_discharge_time": avg_time or "-",
-            "late_discharges": num(t.get("late"))}
+            "late_discharges": num(t.get("late")),
+            "late_cutoff": LATE_DISCHARGE[:5]}
 
 
 # ------------------------------------------------------ 8. ผู้ป่วยรอเตียง
@@ -450,7 +460,7 @@ def alerts(kpi, beds, los, wait, dch, dq=None, readmit=None):
         out.append({"level": "mid", "issue": f"LOS > 10 วัน {long_stay['value']} ราย",
                     "where": "ผู้ป่วยใน", "status": "เฝ้าระวัง", "action": "ทบทวนแผนการรักษา"})
     if dch["late_discharges"] > 0:
-        out.append({"level": "mid", "issue": f"จำหน่ายหลัง 16:00 น. {dch['late_discharges']} ราย",
+        out.append({"level": "mid", "issue": f"จำหน่ายหลัง {dch.get('late_cutoff', '16:00')} น. {dch['late_discharges']} ราย",
                     "where": "ภาพรวม", "status": "เฝ้าระวัง", "action": "ปรับกระบวนการจำหน่าย"})
     if kpi["readmission_rate"] > 10:
         top = (readmit or {}).get("items") or []

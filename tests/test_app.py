@@ -194,3 +194,22 @@ def test_discharge_quality_handles_zero_beds(fake_db):
     import queries
     q = queries.discharge_quality("2026-10-01", "2026-10-23", "all", 0)
     assert q["turnover"] == 0.0 and q["period_occupancy"] == 0.0 and q["cmi"] == 0.0
+
+
+def test_late_discharge_counts_only_approved_after_cutoff(fake_db):
+    """เสียชีวิต / ส่งต่อ / หนี ไม่นับเป็นจำหน่ายช้า และ 16:00 ตรงไม่นับว่า "หลัง 16:00" """
+    import queries
+    queries.discharge_planning("2026-10-01", "2026-10-23", "all")
+    sql = next(s for s in fake_db if " late" in s)
+    assert "i.dchtime > '16:00:00'" in sql and "i.dchtype = '01'" in sql
+
+
+def test_late_discharge_cutoff_env_is_validated(monkeypatch):
+    import importlib
+    import queries
+    monkeypatch.setenv("IPD_LATE_DISCHARGE", "16:00' or 1=1 --")
+    assert importlib.reload(queries).LATE_DISCHARGE == "16:00:00"
+    monkeypatch.setenv("IPD_LATE_DISCHARGE", "15:30")
+    assert importlib.reload(queries).LATE_DISCHARGE == "15:30:00"
+    monkeypatch.delenv("IPD_LATE_DISCHARGE")
+    importlib.reload(queries)

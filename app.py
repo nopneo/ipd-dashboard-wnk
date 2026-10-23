@@ -53,7 +53,7 @@ class PrefixMiddleware:
 app = Flask(__name__)
 app.wsgi_app = PrefixMiddleware(app.wsgi_app)
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 ICON_VERSION = "1"
 #: ผู้พัฒนา — แสดงท้ายหน้า แก้ทับได้ด้วย env IPD_DEV_CONTACT
 DEV_CONTACT = "นายเผด็จชัย สิงหล โรงพยาบาลวังน้ำเขียว"
