@@ -12,6 +12,8 @@ FILES = ["app.py", "cache.py", "db.py", "queries.py", "render.py",
          "requirements.txt", ".env.example", "INSTALL.md", "SECURITY.md", "CHANGELOG.md",
          "Dockerfile", ".dockerignore", "LICENSE", "NOTICE.md"]
 DIRS = ["templates", "static"]
+#: คู่มือติดตั้ง PDF — สร้างด้วย python docs/manual/build_manual.py
+MANUAL = os.path.join("docs", "IPD_Dashboard_install_manual.pdf")
 SKIP = {os.path.join("static", "img", "hospital_logo.png"), os.path.join("static", "img", "hero.jpg")}
 
 
@@ -30,6 +32,10 @@ def main():
                     if rel in SKIP or "__pycache__" in rel:
                         continue
                     z.write(full, "ipd_dashboard/" + rel.replace(os.sep, "/"))
+        if os.path.exists(os.path.join(HERE, MANUAL)):
+            z.write(os.path.join(HERE, MANUAL), "ipd_dashboard/" + os.path.basename(MANUAL))
+        else:
+            print("ไม่มี", MANUAL, "— ชุดติดตั้งนี้ไม่มีคู่มือ PDF")
     print(out, os.path.getsize(out), "bytes")
     return out
 

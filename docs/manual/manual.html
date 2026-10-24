@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>คู่มือติดตั้ง IPD Dashboard</title>
+<style>
+@font-face { font-family: Sarabun; font-weight: 400; src: url('../../static/fonts/Sarabun-Regular.ttf'); }
+@font-face { font-family: Sarabun; font-weight: 600; src: url('../../static/fonts/Sarabun-SemiBold.ttf'); }
+@font-face { font-family: Sarabun; font-weight: 700; src: url('../../static/fonts/Sarabun-Bold.ttf'); }
+@font-face { font-family: Kanit; font-weight: 500; src: url('../../static/fonts/Kanit-Medium.ttf'); }
+@font-face { font-family: Kanit; font-weight: 600; src: url('../../static/fonts/Kanit-SemiBold.ttf'); }
+@font-face { font-family: Kanit; font-weight: 700; src: url('../../static/fonts/Kanit-Bold.ttf'); }
+
+@page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+:root { --p: #5b3fd6; --pd: #3a2a9a; --navy: #2e2a78; --muted: #6b6497; --line: #e6e0fa; --soft: #f6f3ff; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: Sarabun, sans-serif; font-size: 10.6pt; line-height: 1.62; color: #24214d; margin: 0; }
+h1, h2, h3 { font-family: Kanit, sans-serif; color: var(--pd); line-height: 1.3; }
+h2 { font-size: 16pt; font-weight: 600; margin: 0 0 8px; padding-bottom: 5px; border-bottom: 2.5px solid var(--line);
+     break-after: avoid; }
+h2 .n { display: inline-block; min-width: 30px; height: 30px; line-height: 30px; text-align: center; border-radius: 9px;
+        background: var(--p); color: #fff; font-size: 13pt; margin-right: 8px; }
+h3 { font-size: 12pt; font-weight: 600; margin: 14px 0 4px; color: var(--navy); break-after: avoid; }
+section { break-before: page; }
+section.cont { break-before: auto; margin-top: 22px; }
+p { margin: 5px 0 8px; }
+ul, ol { margin: 4px 0 8px; padding-left: 22px; }
+li { margin: 2px 0; }
+code { font-family: Consolas, "Courier New", monospace; font-size: 9.2pt; background: #f1edff; color: #3a2a9a;
+       padding: 0 4px; border-radius: 4px; }
+pre { font-family: Consolas, "Courier New", monospace; font-size: 8.9pt; line-height: 1.45; background: #1f1d3a; color: #ece9ff;
+      padding: 10px 13px; border-radius: 10px; margin: 6px 0 10px; white-space: pre-wrap; word-break: break-all;
+      break-inside: avoid; }
+pre .c { color: #9d97cf; }
+table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9.6pt; break-inside: auto; }
+th { background: var(--p); color: #fff; font-family: Kanit; font-weight: 500; text-align: left; padding: 5px 8px; }
+td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:nth-child(even) td { background: #faf8ff; }
+tr { break-inside: avoid; }
+.box { border-radius: 12px; padding: 9px 13px; margin: 8px 0 10px; break-inside: avoid; }
+.box b:first-child { font-family: Kanit; font-weight: 600; }
+.tip { background: #eefaf6; border: 1.5px solid #bfe9da; }
+.warn { background: #fff4e6; border: 1.5px solid #fbd38d; }
+.info { background: var(--soft); border: 1.5px solid var(--line); }
+.check li { list-style: none; margin-left: -18px; }
+.check li::before { content: "☐  "; color: var(--p); font-weight: 700; }
+.shot { display: block; margin: 8px auto; border-radius: 10px; border: 1px solid var(--line); }
+.cap { text-align: center; font-size: 9pt; color: var(--muted); margin-top: -2px; }
+.two { display: flex; gap: 16px; align-items: flex-start; }
+.two > div { flex: 1; min-width: 0; }
+table.blk { font-size: 9pt; } table.blk td { padding: 3px 7px; } table.blk td:first-child { white-space: nowrap; }
+
+/* ---- ปก */
+.cover { height: 263mm; display: flex; flex-direction: column; justify-content: center; text-align: center;
+         background: linear-gradient(150deg, #4b33b8, #6d4ee8 55%, #a47bf7); color: #fff; border-radius: 22px;
+         padding: 30px; position: relative; overflow: hidden; }
+.cover img.ic { width: 150px; margin: 0 auto 18px; filter: drop-shadow(0 10px 22px rgba(0,0,0,.25)); }
+.cover h1 { color: #fff; font-size: 34pt; font-weight: 700; margin: 0; }
+.cover .s { font-family: Kanit; font-size: 16pt; font-weight: 500; margin: 6px 0 0; opacity: .95; }
+.cover .pill { display: inline-block; margin: 26px auto 0; background: #fff; color: var(--pd); font-family: Kanit;
+               font-weight: 600; font-size: 13pt; padding: 7px 24px; border-radius: 99px; }
+.cover .meta { margin-top: 40px; font-size: 11pt; line-height: 1.8; opacity: .95; }
+.cover .foot { position: absolute; left: 0; right: 0; bottom: 22px; font-size: 9.5pt; opacity: .85; }
+
+/* ---- สารบัญ */
+.toc { columns: 2; column-gap: 26px; font-size: 11pt; margin-top: 8px; }
+.toc div { break-inside: avoid; padding: 3px 0; border-bottom: 1px dotted #d8d0f5; }
+.toc b { color: var(--p); font-family: Kanit; display: inline-block; width: 24px; }
+.steps { counter-reset: s; }
+.steps > li { list-style: none; counter-increment: s; position: relative; padding-left: 6px; margin: 6px 0; }
+.steps > li::before { content: counter(s); position: absolute; left: -24px; top: 1px; width: 20px; height: 20px;
+                      border-radius: 50%; background: var(--p); color: #fff; font: 600 9.5pt/20px Kanit; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- ================================================================ ปก -->
+<div class="cover">
+  <img class="ic" src="../../static/icon/icon-512.png" alt="">
+  <h1>คู่มือติดตั้ง IPD Dashboard</h1>
+  <div class="s">แดชบอร์ดบริหารจัดการผู้ป่วยใน สำหรับโรงพยาบาลที่ใช้ HOSxP</div>
+  <div><span class="pill">เวอร์ชัน {{VERSION}}</span></div>
+  <div class="meta">
+    สำหรับผู้ดูแลระบบสารสนเทศของโรงพยาบาล<br>
+    ดาวน์โหลด: github.com/nopneo/ipd-dashboard-wnk/releases
+  </div>
+  <div class="foot">พัฒนาโดย นายเผด็จชัย สิงหล โรงพยาบาลวังน้ำเขียว จ.นครราชสีมา · ใช้ฟรี ใบอนุญาต MIT</div>
+</div>
+
+<!-- ================================================================ สารบัญ + ภาพรวม -->
+<section>
+  <h2>สารบัญ</h2>
+  <div class="toc">
+    <div><b>1</b> IPD Dashboard คืออะไร</div>
+    <div><b>2</b> สิ่งที่ต้องเตรียม</div>
+    <div><b>3</b> สร้างบัญชีฐานข้อมูลอ่านอย่างเดียว</div>
+    <div><b>4</b> ติดตั้งบน Linux (แนะนำ)</div>
+    <div><b>5</b> ติดตั้งบน Windows</div>
+    <div><b>6</b> ติดตั้งด้วย Docker</div>
+    <div><b>7</b> ตั้งค่า (.env)</div>
+    <div><b>8</b> ชื่อ โลโก้ และภาพพื้นหลังของโรงพยาบาล</div>
+    <div><b>9</b> เปิดผ่านโดเมนของโรงพยาบาล (reverse proxy)</div>
+    <div><b>10</b> ตรวจสอบหลังติดตั้ง</div>
+    <div><b>11</b> ความปลอดภัย</div>
+    <div><b>12</b> อัปเดตเป็นเวอร์ชันใหม่</div>
+    <div><b>13</b> แก้ปัญหาที่พบบ่อย</div>
+    <div><b>14</b> นิยามตัวชี้วัด</div>
+    <div><b>15</b> ติดต่อและใบอนุญาต</div>
+  </div>
+
+  <section class="cont">
+    <h2><span class="n">1</span>IPD Dashboard คืออะไร</h2>
+    <p>เว็บแอปที่ดึงข้อมูลผู้ป่วยในจากฐานข้อมูล HOSxP <b>แบบสด</b> แล้วแสดงเป็นอินโฟกราฟิกหน้าเดียว 12 บล็อก
+      ผู้บริหารและหัวหน้าหอผู้ป่วยเปิดดูได้ทั้งบนคอมพิวเตอร์และมือถือ และกดส่งออกเป็นไฟล์ JPG / PNG / PDF
+      ไปใช้ในการประชุมหรือส่งเข้ากลุ่มไลน์ได้ทันที</p>
+    <div class="two">
+      <div>
+        <ul>
+          <li><b>อ่านอย่างเดียว</b> — ไม่เขียน ไม่แก้ข้อมูลใน HOSxP</li>
+          <li><b>ไม่มีข้อมูลรายบุคคล</b> — แสดงเฉพาะตัวเลขรวม ไม่มี HN / AN / ชื่อผู้ป่วย</li>
+          <li><b>ไม่ต้องคีย์ข้อมูลเพิ่ม</b> — ใช้ข้อมูลที่ HOSxP บันทึกอยู่แล้ว</li>
+          <li><b>ทำงานในโรงพยาบาล</b> — ไม่ส่งข้อมูลไปเซิร์ฟเวอร์ภายนอก ไม่เรียกฟอนต์/สคริปต์จากอินเทอร์เน็ต</li>
+          <li><b>ใช้ฟรี</b> — โอเพนซอร์ส ใบอนุญาต MIT แก้ไขต่อได้</li>
+        </ul>
+        <h3>12 บล็อกบนแดชบอร์ด</h3>
+        <table class="blk">
+          <tr><th style="width:40px">#</th><th>บล็อก</th></tr>
+          <tr><td>1</td><td>ตัวชี้วัดหลัก — ผู้ป่วยใน รับใหม่ จำหน่าย เตียง ครองเตียง วันนอนเฉลี่ย Readmission</td></tr>
+          <tr><td>2</td><td>แนวโน้มรับใหม่ / จำหน่าย 9 เดือน</td></tr>
+          <tr><td>3</td><td>อัตราครองเตียงรายตึก</td></tr>
+          <tr><td>4–5</td><td>สถานะผู้ป่วย · วันนอนของผู้ป่วยที่ยังอยู่</td></tr>
+          <tr><td>6–8</td><td>Patient Flow · Discharge Planning · ผู้ป่วยรอเตียง</td></tr>
+          <tr><td>9</td><td>โปรไฟล์ผู้ป่วย — สิทธิ ช่วงอายุ กลุ่มโรคหลัก</td></tr>
+          <tr><td>10</td><td>Alert &amp; Action — ประเด็นเกินเกณฑ์ พร้อมสิ่งที่ควรทำ</td></tr>
+          <tr><td>11</td><td>คุณภาพการจำหน่าย — ส่งต่อ ไม่สมัครใจอยู่ หนี ลงรหัสค้าง CMI วันนอนรวม Bed Turnover</td></tr>
+          <tr><td>12</td><td>Readmission แยกตามกลุ่มโรค</td></tr>
+        </table>
+      </div>
+      <div style="flex:.5">
+        <img class="shot" src="img/dashboard.jpg" style="width:100%">
+        <div class="cap">ตัวอย่างหน้าจอ (โรงพยาบาลวังน้ำเขียว)</div>
+      </div>
+    </div>
+  </section>
+</section>
+
+<!-- ================================================================ 2–3 -->
+<section>
+  <h2><span class="n">2</span>สิ่งที่ต้องเตรียม</h2>
+  <table>
+    <tr><th style="width:28%">รายการ</th><th>ข้อกำหนด</th></tr>
+    <tr><td>เครื่องเซิร์ฟเวอร์</td><td>Linux (AlmaLinux / Rocky / RHEL 9, Ubuntu 22.04 ขึ้นไป) หรือ Windows 10/11/Server ·
+      CPU 2 core, RAM 2 GB, พื้นที่ว่าง 2 GB (ใช้ร่วมกับเครื่องที่มีอยู่แล้วได้ ไม่ต้องซื้อใหม่)</td></tr>
+    <tr><td>Python</td><td>3.9 ขึ้นไป (AlmaLinux 9 มีมาให้แล้ว)</td></tr>
+    <tr><td>ฐานข้อมูล HOSxP</td><td>MariaDB / MySQL ที่เครื่องนี้ต่อถึงได้ พอร์ต 3306 ·
+      <b>แนะนำให้ต่อเครื่อง Slave / Replica</b> ไม่ใช่ฐานหลักที่ใช้ให้บริการ</td></tr>
+    <tr><td>บัญชีฐานข้อมูล</td><td>บัญชีที่มีสิทธิ์ <code>SELECT</code> อย่างเดียว (หัวข้อ 3)</td></tr>
+    <tr><td>เบราว์เซอร์บนเซิร์ฟเวอร์</td><td>Chromium / Chrome / Edge — <b>เฉพาะเมื่อต้องการปุ่มส่งออก</b> JPG/PNG/PDF</td></tr>
+    <tr><td>ผู้ติดตั้ง</td><td>ผู้ดูแลระบบที่ใช้คำสั่ง Linux ขั้นพื้นฐานได้ (หรือ Windows) · เวลาติดตั้งประมาณ 15–30 นาที</td></tr>
+  </table>
+
+  <div class="box info"><b>ไฟล์ชุดติดตั้ง</b> — ดาวน์โหลด <code>ipd_dashboard-{{VERSION}}.zip</code> จาก
+    <code>github.com/nopneo/ipd-dashboard-wnk/releases</code> ภายในมีโปรแกรม คู่มือนี้ <code>INSTALL.md</code>
+    <code>SECURITY.md</code> และ <code>.env.example</code> (ตัวอย่างค่าตั้ง) — ไม่มีรหัสผ่านหรือข้อมูลของโรงพยาบาลใดติดมา</div>
+
+  <section class="cont">
+    <h2><span class="n">3</span>สร้างบัญชีฐานข้อมูลอ่านอย่างเดียว</h2>
+    <p>ล็อกอินฐานข้อมูล HOSxP ด้วยบัญชีผู้ดูแล (เช่น ผ่าน HeidiSQL หรือคำสั่ง <code>mysql</code>) แล้วรัน
+      โดยเปลี่ยน <code>10.0.0.20</code> เป็น IP ของเครื่องที่จะติดตั้งแดชบอร์ด และตั้งรหัสผ่านให้ยาวและเดายาก</p>
+<pre>CREATE USER 'ipd_ro'@'10.0.0.20' IDENTIFIED BY '&lt;รหัสผ่านยาวอย่างน้อย 16 ตัว&gt;';
+GRANT SELECT ON hos.* TO 'ipd_ro'@'10.0.0.20';
+FLUSH PRIVILEGES;</pre>
+    <ul>
+      <li>ระบุ IP ของเครื่องแดชบอร์ดแทน <code>'%'</code> — บัญชีนี้จะล็อกอินได้จากเครื่องนั้นเครื่องเดียว</li>
+      <li>ใช้ฐานข้อมูลชื่ออื่นที่ไม่ใช่ <code>hos</code> ให้แก้ทั้งในคำสั่งนี้และค่า <code>DB_NAME</code></li>
+      <li>แม้บัญชีมีสิทธิ์เขียน แดชบอร์ดยังตั้ง session เป็น <code>READ ONLY</code> ให้อีกชั้น แต่ไม่ควรพึ่งชั้นนี้อย่างเดียว</li>
+    </ul>
+    <p>ทดสอบจากเครื่องแดชบอร์ด:</p>
+<pre>mysql -h &lt;IP ฐานข้อมูล&gt; -u ipd_ro -p hos -e "select count(*) from ipt where dchdate is null"</pre>
+    <p>ได้ตัวเลขผู้ป่วยในปัจจุบันออกมา = พร้อมติดตั้ง</p>
+  </section>
+</section>
+
+<!-- ================================================================ 4 Linux -->
+<section>
+  <h2><span class="n">4</span>ติดตั้งบน Linux (แนะนำ)</h2>
+  <p>ตัวอย่างใช้ AlmaLinux 9 ติดตั้งที่ <code>/opt/ipd_dashboard</code> และรันด้วยผู้ใช้ <code>ipd</code> (ไม่ใช้ root)
+    ทุกคำสั่งรันด้วย root หรือ <code>sudo</code></p>
+  <ol class="steps">
+    <li><b>สร้างผู้ใช้สำหรับรันโปรแกรม</b> (ล็อกอินเข้าเครื่องไม่ได้)
+<pre>useradd -r -M -d /var/lib/ipd -s /sbin/nologin ipd</pre></li>
+    <li><b>แตกไฟล์และติดตั้งไลบรารี</b>
+<pre>dnf install -y python3 unzip                 <span class="c"># Ubuntu: apt install -y python3-venv unzip</span>
+unzip ipd_dashboard-{{VERSION}}.zip -d /opt
+cd /opt/ipd_dashboard
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt</pre></li>
+    <li><b>ตั้งค่าฐานข้อมูล</b> — คัดลอกไฟล์ตัวอย่างแล้วแก้ <code>DB_HOST</code> <code>DB_USER</code> <code>DB_PASS</code>
+<pre>cp .env.example .env
+nano .env
+chown -R root:root /opt/ipd_dashboard        <span class="c"># โค้ดเป็นของ root → โปรแกรมแก้โค้ดตัวเองไม่ได้</span>
+chown root:ipd .env &amp;&amp; chmod 640 .env       <span class="c"># รหัสผ่าน: root แก้ได้ ipd อ่านได้ คนอื่นมองไม่เห็น</span></pre></li>
+    <li><b>ทดลองรัน</b> แล้วเปิด <code>http://&lt;IP เครื่อง&gt;:5700/</code> จากเครื่องอื่นในโรงพยาบาล (กด Ctrl+C เพื่อหยุด)
+<pre>runuser -u ipd -- .venv/bin/python app.py</pre></li>
+    <li><b>ติดตั้งเบราว์เซอร์สำหรับปุ่มส่งออก</b> (ข้ามได้ถ้าไม่ใช้ — แล้วตั้ง <code>IPD_EXPORT=0</code>)
+<pre>dnf install -y epel-release &amp;&amp; dnf install -y chromium-headless
+<span class="c"># Ubuntu: ติดตั้ง google-chrome-stable จาก dl.google.com (chromium ของ Ubuntu เป็น snap ใช้กับ service ไม่สะดวก)</span></pre></li>
+    <li><b>ตั้งเป็นบริการ</b> ให้เปิดเองทุกครั้งที่เครื่องรีสตาร์ต — สร้างไฟล์ <code>/etc/systemd/system/ipd-dashboard.service</code>
+<pre>[Unit]
+Description=IPD Dashboard
+After=network.target
+
+[Service]
+User=ipd
+Group=ipd
+WorkingDirectory=/opt/ipd_dashboard
+ExecStart=/opt/ipd_dashboard/.venv/bin/gunicorn -w 3 -t 120 -b 0.0.0.0:5700 app:app
+Restart=always
+Environment=HOME=/var/lib/ipd
+StateDirectory=ipd
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target</pre>
+<pre>systemctl daemon-reload
+systemctl enable --now ipd-dashboard
+systemctl status ipd-dashboard               <span class="c"># ต้องขึ้น active (running)</span></pre></li>
+    <li><b>เปิด firewall</b> เฉพาะวงในของโรงพยาบาล (ถ้าจะเปิดผ่านโดเมน ดูหัวข้อ 9 แทน)
+<pre>firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=10.0.0.0/8 port port=5700 protocol=tcp accept'
+firewall-cmd --reload</pre></li>
+  </ol>
+  <div class="box tip"><b>ทำไมไม่ใช้ root</b> — ถ้าโปรแกรมถูกเจาะ ผู้บุกรุกได้แค่สิทธิ์ของผู้ใช้ <code>ipd</code>
+    ซึ่งแก้โค้ด อ่านไฟล์ระบบ หรือยกระดับสิทธิ์ไม่ได้ และปุ่มส่งออกจะเปิด sandbox ของ Chromium ได้ (root ต้องปิด)</div>
+</section>
+
+<!-- ================================================================ 5–6 -->
+<section>
+  <h2><span class="n">5</span>ติดตั้งบน Windows</h2>
+  <ol class="steps">
+    <li>ติดตั้ง Python 3.11 ขึ้นไปจาก python.org (ติ๊ก <i>Add python.exe to PATH</i>) และมี Google Chrome หรือ Microsoft Edge</li>
+    <li>แตก zip ไว้ที่ <code>C:\ipd_dashboard</code> แล้วเปิด PowerShell ในโฟลเดอร์นั้น
+<pre>python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+copy .env.example .env
+notepad .env</pre></li>
+    <li>ทดลองรัน แล้วเปิด <code>http://localhost:5700/</code>
+<pre>.venv\Scripts\waitress-serve --listen=0.0.0.0:5700 app:app</pre></li>
+    <li>ตั้งให้เปิดเองตอนเครื่องเปิด: ใช้ Task Scheduler (<i>At startup</i>, รันคำสั่งข้อ 3 ในโฟลเดอร์นี้)
+      หรือ NSSM สร้างเป็น Windows Service · ตั้งสิทธิ์ไฟล์ <code>.env</code> ให้อ่านได้เฉพาะบัญชีที่รันโปรแกรมและผู้ดูแล</li>
+    <li>เปิด Windows Firewall ขาเข้า TCP 5700 เฉพาะเครือข่ายของโรงพยาบาล</li>
+  </ol>
+
+  <section class="cont">
+    <h2><span class="n">6</span>ติดตั้งด้วย Docker</h2>
+    <p>มี <code>Dockerfile</code> 2 แบบ ทั้งคู่ใช้ Alpine Linux และรันด้วยผู้ใช้ธรรมดา (uid 10001)</p>
+<pre>docker build -t ipd-dashboard .                          <span class="c"># ไม่มีปุ่มส่งออก (image เล็ก ช่องโหว่น้อย)</span>
+docker build --target export -t ipd-dashboard-export .   <span class="c"># มี Chromium สำหรับปุ่มส่งออก</span>
+docker run -d --name ipd -p 5700:8080 --env-file .env --restart unless-stopped ipd-dashboard</pre>
+    <ul>
+      <li>รหัสฐานข้อมูลส่งผ่าน <code>--env-file</code> ตอนรันเท่านั้น ไม่ฝังลงใน image</li>
+      <li>โลโก้ของโรงพยาบาลใส่ด้วย <code>-v /path/hospital_logo.png:/app/static/img/hospital_logo.png:ro</code></li>
+    </ul>
+  </section>
+</section>
+
+<!-- ================================================================ 7–8 -->
+<section>
+  <h2><span class="n">7</span>ตั้งค่า (.env)</h2>
+  <p>แก้ไฟล์ <code>.env</code> แล้วรีสตาร์ตบริการ (<code>systemctl restart ipd-dashboard</code>) ทุกครั้ง ·
+    ค่าที่ <b>ต้องใส่</b> มีแค่ 5 ตัวแรก ที่เหลือไม่ใส่ก็ได้</p>
+  <table>
+    <tr><th style="width:30%">ค่า</th><th>ความหมาย</th><th style="width:16%">ค่าเริ่มต้น</th></tr>
+    <tr><td><code>DB_HOST</code> <code>DB_PORT</code></td><td>ที่อยู่ฐานข้อมูล HOSxP</td><td>127.0.0.1 · 3306</td></tr>
+    <tr><td><code>DB_NAME</code></td><td>ชื่อฐานข้อมูล</td><td>hos</td></tr>
+    <tr><td><code>DB_USER</code> <code>DB_PASS</code></td><td>บัญชีอ่านอย่างเดียวจากหัวข้อ 3</td><td>–</td></tr>
+    <tr><td><code>PORT</code></td><td>พอร์ตของโปรแกรม (เมื่อรัน <code>python app.py</code>)</td><td>5700</td></tr>
+    <tr><td><code>IPD_HOSPITAL_NAME</code></td><td>ชื่อโรงพยาบาลบนแถบหัว (ไม่ใส่ = อ่านจาก <code>opdconfig</code> ของ HOSxP)</td><td>อัตโนมัติ</td></tr>
+    <tr><td><code>IPD_HOSPITAL_NAME_EN</code></td><td>ชื่อภาษาอังกฤษใต้ชื่อไทย</td><td>ไม่แสดง</td></tr>
+    <tr><td><code>IPD_CONTACT</code></td><td>ช่องทางติดต่อท้ายหน้า เช่น <code>งานสารสนเทศ โทร 1234</code></td><td>–</td></tr>
+    <tr><td><code>IPD_TOTAL_BEDS</code></td><td>เตียงตามกรอบ ใช้เป็นตัวหารอัตราครองเตียง (ดูหัวข้อ 14)</td><td>รวม bedcount</td></tr>
+    <tr><td><code>IPD_LATE_DISCHARGE</code></td><td>เวลาที่ถือว่าจำหน่ายช้า (HH:MM)</td><td>16:00</td></tr>
+    <tr><td><code>IPD_MAX_DAYS</code></td><td>ช่วงวันที่ยาวสุดที่เลือกได้ต่อครั้ง</td><td>366</td></tr>
+    <tr><td><code>IPD_CACHE_TTL</code></td><td>เก็บผลไว้กี่วินาทีก่อนดึงใหม่ (ลดภาระฐานข้อมูล, 0 = ปิด)</td><td>120</td></tr>
+    <tr><td><code>IPD_DB_TIMEOUT</code></td><td>เวลาสูงสุดต่อคำสั่ง SQL (วินาที)</td><td>60</td></tr>
+    <tr><td><code>IPD_EXPORT</code></td><td><code>0</code> = ซ่อนปุ่มส่งออก (เครื่องที่ไม่มี Chromium)</td><td>1</td></tr>
+    <tr><td><code>IPD_EXPORT_WAIT</code></td><td>ส่งออก: รอคิวได้กี่วินาที (0 = ไม่ว่างตอบทันที)</td><td>0</td></tr>
+    <tr><td><code>IPD_EXPORT_CACHE_TTL</code></td><td>เก็บไฟล์ส่งออกให้คนถัดไปที่ขอช่วงเดียวกัน (วินาที)</td><td>300</td></tr>
+    <tr><td><code>IPD_CHROME_NO_SANDBOX</code></td><td><code>1</code> = ปิด sandbox ของ Chromium (เฉพาะเมื่อส่งออกไม่ได้)</td><td>ปิดเมื่อเป็น root</td></tr>
+  </table>
+
+  <section class="cont">
+    <h2><span class="n">8</span>ชื่อ โลโก้ และภาพพื้นหลังของโรงพยาบาล</h2>
+    <div class="two">
+      <div>
+        <table>
+          <tr><th>ไฟล์</th><th>ใช้ทำอะไร</th></tr>
+          <tr><td><code>static/img/hospital_logo.png</code></td><td>ตราโรงพยาบาลบนแถบหัว · PNG สี่เหลี่ยมจัตุรัส พื้นโปร่งใส 512×512 px
+            · ไม่มี = ใช้โลโก้กลาง</td></tr>
+          <tr><td><code>static/img/hero.jpg</code></td><td>ภาพพื้นหลังแถบหัว เช่นภาพหน้าอาคาร · แนวนอน กว้าง ≥ 1600 px
+            · ระบบทับเฉดม่วงให้อ่านตัวหนังสือออกเอง · ไม่มี = พื้นไล่สีม่วง</td></tr>
+        </table>
+        <p>วางไฟล์แล้วรีสตาร์ตบริการ (Linux: ให้ผู้ใช้ <code>ipd</code> อ่านได้ เช่น <code>chmod 644</code>)
+          ไฟล์ทั้งสองไม่อยู่ใน zip จึงไม่ถูกทับตอนอัปเดต</p>
+        <h3>เปิดจากมือถือ</h3>
+        <p>เปิดหน้าแดชบอร์ดในมือถือ แล้วเลือก <b>เพิ่มลงในหน้าจอโฮม</b> (Android: เมนู ⋮ · iPhone: ปุ่มแชร์)
+          จะได้ไอคอน IPD Dashboard ที่เปิดเต็มจอเหมือนแอป</p>
+      </div>
+      <div style="flex:.42">
+        <img class="shot" src="img/mobile.jpg" style="width:100%">
+        <div class="cap">หน้าจอบนมือถือ</div>
+      </div>
+    </div>
+  </section>
+</section>
+
+<!-- ================================================================ 9 proxy -->
+<section>
+  <h2><span class="n">9</span>เปิดผ่านโดเมนของโรงพยาบาล (reverse proxy)</h2>
+  <p>ถ้ามีเว็บเซิร์ฟเวอร์ของโรงพยาบาลอยู่แล้ว วางแดชบอร์ดไว้ใต้ path เช่น <code>https://&lt;โดเมน&gt;/ipd/</code>
+    โดยไม่ต้องเปิดพอร์ต 5700 ออกนอก โปรแกรมอ่าน header <code>X-Forwarded-Prefix</code> แล้วสร้างลิงก์ให้ถูกเอง</p>
+  <h3>Apache</h3>
+<pre>RewriteEngine On
+RewriteRule ^/ipd$ /ipd/ [R=302,L]
+ProxyPass        /ipd/ http://127.0.0.1:5700/ timeout=120
+ProxyPassReverse /ipd/ http://127.0.0.1:5700/
+&lt;Location /ipd/&gt;
+  RequestHeader set X-Forwarded-Prefix /ipd
+  RequestHeader set X-Forwarded-Proto https
+&lt;/Location&gt;</pre>
+  <div class="box warn"><b>ก่อนแก้ค่า Apache</b> — สำรองไฟล์ก่อน → ตรวจด้วย <code>httpd -t</code> (Ubuntu: <code>apache2ctl -t</code>)
+    → ผ่านแล้วค่อย <code>systemctl reload httpd</code> · ถ้ามีบรรทัด <code>ProxyPass /</code> ส่งทั้งเว็บไปที่อื่น
+    ต้องวางบล็อกนี้ <b>ก่อน</b> บรรทัดนั้น ไม่งั้น <code>/ipd/</code> จะถูกส่งไปผิดที่</div>
+  <h3>Nginx</h3>
+<pre>location = /ipd { return 302 /ipd/; }
+location /ipd/ {
+    proxy_pass http://127.0.0.1:5700/;
+    proxy_set_header Host               $host;
+    proxy_set_header X-Forwarded-Prefix /ipd;
+    proxy_set_header X-Forwarded-Proto  $scheme;
+    proxy_read_timeout 120s;
+}</pre>
+  <p>ตรวจด้วย <code>nginx -t</code> แล้ว <code>systemctl reload nginx</code> · เมื่อใช้ proxy แล้ว
+    ตั้ง firewall ให้พอร์ต 5700 รับเฉพาะเครื่อง proxy (หรือให้ gunicorn ฟัง <code>-b 127.0.0.1:5700</code>)</p>
+  <div class="box warn"><b>ถ้าเปิดออกอินเทอร์เน็ต</b> — โปรแกรมไม่มีระบบล็อกอิน ใครมีลิงก์ก็เห็นตัวเลขรวมของโรงพยาบาลได้
+    ควรจำกัดด้วย VPN / Cloudflare Access / Basic Auth และตั้ง rate limit ที่ proxy (รายละเอียดหัวข้อ 11)</div>
+</section>
+
+<!-- ================================================================ 10–11 -->
+<section>
+  <h2><span class="n">10</span>ตรวจสอบหลังติดตั้ง</h2>
+  <ul class="check">
+    <li><code>http://&lt;เครื่อง&gt;:5700/healthz</code> ตอบ <code>{"status":"ok"}</code></li>
+    <li>หน้าแรกขึ้นชื่อและโลโก้ของโรงพยาบาลถูกต้อง</li>
+    <li><b>ผู้ป่วยในปัจจุบัน</b> ตรงกับจำนวนใน HOSxP (หน้าทะเบียนผู้ป่วยใน ที่ยังไม่จำหน่าย)</li>
+    <li>ตาราง <b>ครองเตียงรายตึก</b> มีครบทุกตึก — ไม่ครบ = ตรวจ <code>ward.ward_active='Y'</code> และ <code>ward.bedcount</code> ใน HOSxP</li>
+    <li><b>เตียงทั้งหมด</b> ตรงกรอบของโรงพยาบาล — ไม่ตรง = ตั้ง <code>IPD_TOTAL_BEDS</code></li>
+    <li>เลือกช่วงวันที่ย้อนหลัง 1 เดือน ยอดรับใหม่/จำหน่ายใกล้เคียงรายงานประจำเดือนที่ใช้อยู่</li>
+    <li>กดปุ่ม ⬇ JPG ได้ไฟล์ภายใน ~15 วินาที (ถ้าไม่ใช้ปุ่มส่งออก ตั้ง <code>IPD_EXPORT=0</code>)</li>
+    <li>เปิดจากมือถือในเครือข่ายโรงพยาบาลได้ และหน้าไม่ล้นจอด้านข้าง</li>
+    <li>รีสตาร์ตเครื่องแล้วบริการกลับมาเอง (<code>systemctl is-enabled ipd-dashboard</code> = enabled)</li>
+  </ul>
+
+  <section class="cont">
+    <h2><span class="n">11</span>ความปลอดภัย</h2>
+    <h3>ที่โปรแกรมทำให้แล้ว</h3>
+    <ul>
+      <li>แสดงเฉพาะตัวเลขรวม ไม่มี HN / AN / ชื่อ ทั้งในหน้าเว็บ API และไฟล์ส่งออก</li>
+      <li>ตรวจรูปแบบวันที่และรหัส ward ก่อนนำไปใช้ใน SQL (กัน SQL injection) · จำกัดช่วงวันที่ 366 วัน</li>
+      <li>ต่อฐานข้อมูลแบบ READ ONLY มี timeout ต่อคำสั่ง และแคชผลลดภาระฐานข้อมูล</li>
+      <li>ปุ่มส่งออกทำทีละงาน ถ้ามีงานค้างตอบ "ไม่ว่าง" ทันที (กันเว็บค้างจากการกดรัว) · เบราว์เซอร์เปิดได้เฉพาะหน้าของตัวเอง</li>
+      <li>โหมด debug ปิดเป็นค่าเริ่มต้น · ไม่เรียกทรัพยากรจากอินเทอร์เน็ต · ตรวจไลบรารีด้วย pip-audit ทุกเวอร์ชัน</li>
+    </ul>
+    <h3>ที่โรงพยาบาลต้องทำเอง</h3>
+    <ul class="check">
+      <li>ใช้บัญชีฐานข้อมูล <code>SELECT</code> อย่างเดียว จำกัด IP และต่อ Replica</li>
+      <li>รันด้วยผู้ใช้ธรรมดา ไม่ใช่ root · <code>.env</code> สิทธิ์ 640 (Linux) ห้ามส่งต่อหรืออัปโหลดขึ้นที่ใด</li>
+      <li>firewall ให้พอร์ต 5700 รับเฉพาะ LAN หรือเครื่อง proxy</li>
+      <li>เปิดออกอินเทอร์เน็ต: HTTPS เท่านั้น + จำกัดผู้เข้าถึง + rate limit (เช่น 60 ครั้ง/นาที/IP และ 5 ครั้ง/นาที สำหรับ <code>/ipd/export.*</code>)</li>
+      <li>อัปเดตแพตช์ระบบปฏิบัติการและเวอร์ชันของแดชบอร์ดเป็นระยะ</li>
+    </ul>
+    <p>พบช่องโหว่ กรุณาแจ้งผู้พัฒนาโดยตรง หรือผ่าน GitHub → Security → <i>Report a vulnerability</i> (ไม่เปิดเป็น issue สาธารณะ)</p>
+  </section>
+</section>
+
+<!-- ================================================================ 12–13 -->
+<section>
+  <h2><span class="n">12</span>อัปเดตเป็นเวอร์ชันใหม่</h2>
+<pre>cd /opt
+cp -a ipd_dashboard ipd_dashboard.bak-$(date +%Y%m%d)      <span class="c"># สำรองก่อน</span>
+unzip -o ipd_dashboard-&lt;เวอร์ชันใหม่&gt;.zip -d /opt
+ipd_dashboard/.venv/bin/pip install -r ipd_dashboard/requirements.txt
+chown -R root:root ipd_dashboard &amp;&amp; chown root:ipd ipd_dashboard/.env &amp;&amp; chmod 640 ipd_dashboard/.env
+systemctl restart ipd-dashboard</pre>
+  <p>ไฟล์ <code>.env</code>, <code>hospital_logo.png</code> และ <code>hero.jpg</code> ไม่อยู่ใน zip จึงไม่ถูกทับ ·
+    ดูสิ่งที่เปลี่ยนใน <code>CHANGELOG.md</code> · มีปัญหาย้อนกลับได้โดยคืนโฟลเดอร์ที่สำรองไว้</p>
+
+  <section class="cont">
+    <h2><span class="n">13</span>แก้ปัญหาที่พบบ่อย</h2>
+    <p>ดู log ก่อนเสมอ: <code>journalctl -u ipd-dashboard -n 50</code></p>
+    <table>
+      <tr><th style="width:32%">อาการ</th><th>สาเหตุ / วิธีแก้</th></tr>
+      <tr><td>บริการไม่ขึ้น หรือหน้าเว็บ error 500</td><td>ต่อฐานข้อมูลไม่ได้ — ตรวจ <code>DB_HOST</code> / รหัสผ่าน / firewall ฝั่งฐานข้อมูล
+        ด้วยคำสั่งทดสอบในหัวข้อ 3 · <code>Access denied</code> = รหัสผิด หรือบัญชีไม่ได้อนุญาต IP เครื่องนี้</td></tr>
+      <tr><td><code>Permission denied: '.env'</code></td><td>ตั้งสิทธิ์ใหม่: <code>chown root:ipd .env &amp;&amp; chmod 640 .env</code> (มักเกิดหลังแก้ไฟล์ด้วยการคัดลอกทับ)</td></tr>
+      <tr><td>ภาษาไทยเป็นตัวอักษรแปลก ๆ</td><td>ฐานข้อมูลไม่ใช่ tis-620 ตามที่ HOSxP ใช้ทั่วไป — แจ้งผู้พัฒนาพร้อมผลของ
+        <code>show variables like 'character_set%'</code></td></tr>
+      <tr><td>ปุ่มส่งออกขึ้น "ส่งออกไม่สำเร็จ"</td><td>ไม่มี Chromium — ติดตั้งตามหัวข้อ 4 ข้อ 5 · ติดตั้งแล้วยังไม่ได้ ลอง <code>IPD_CHROME_NO_SANDBOX=1</code></td></tr>
+      <tr><td>ปุ่มส่งออกขึ้น "กำลังส่งออกไฟล์ของผู้ใช้อื่นอยู่"</td><td>ปกติ — ทำทีละงาน รอประมาณ 15 วินาทีแล้วกดใหม่</td></tr>
+      <tr><td>อัตราครองเตียงสูง/ต่ำผิดปกติ</td><td>ผลรวม <code>ward.bedcount</code> ไม่เท่ากรอบเตียงจริง — ตั้ง <code>IPD_TOTAL_BEDS</code></td></tr>
+      <tr><td>ตึกบางตึกไม่ขึ้นในตาราง</td><td>ตึกนั้น <code>ward_active</code> ไม่ใช่ <code>Y</code> หรือ <code>bedcount</code> เป็น 0 ใน HOSxP</td></tr>
+      <tr><td>CMI ต่ำกว่าความจริง</td><td>เคสส่วนใหญ่ยังไม่ได้ group DRG (<code>ipt.adjrw</code> ว่าง) — การ์ดบอกจำนวนที่ group แล้วกำกับไว้</td></tr>
+      <tr><td>ลิงก์ผิดเมื่อเปิดผ่าน /ipd/</td><td>proxy ไม่ได้ส่ง <code>X-Forwarded-Prefix</code> — ตรวจค่าในหัวข้อ 9</td></tr>
+      <tr><td>หน้าโหลดช้า</td><td>ฐานข้อมูลหลักรับภาระมาก — ชี้ไป Replica, เพิ่ม <code>IPD_CACHE_TTL</code>, ลดช่วงวันที่</td></tr>
+    </table>
+  </section>
+</section>
+
+<!-- ================================================================ 14–15 -->
+<section>
+  <h2><span class="n">14</span>นิยามตัวชี้วัด</h2>
+  <table>
+    <tr><th style="width:27%">ตัวชี้วัด</th><th>วิธีคิด (ตารางใน HOSxP)</th></tr>
+    <tr><td>ผู้ป่วยในปัจจุบัน</td><td>แถวใน <code>ipt</code> ที่ <code>dchdate</code> ว่าง (ยังไม่จำหน่าย)</td></tr>
+    <tr><td>รับใหม่ / จำหน่าย</td><td><code>ipt.regdate</code> / <code>ipt.dchdate</code> อยู่ในช่วงที่เลือก · เทียบช่วงก่อนหน้าที่ยาวเท่ากัน</td></tr>
+    <tr><td>อัตราครองเตียง (ปัจจุบัน)</td><td>ผู้ป่วยในปัจจุบัน ÷ เตียงตามกรอบ × 100 · เตียงตามกรอบ = <code>IPD_TOTAL_BEDS</code>
+      หรือผลรวม <code>ward.bedcount</code> ของตึกที่เปิดใช้</td></tr>
+    <tr><td>ครองเตียงเฉลี่ยตลอดช่วง</td><td>วันนอนรวม ÷ (เตียง × จำนวนวันในช่วง) × 100</td></tr>
+    <tr><td>วันนอนรวม</td><td>จำนวนวันที่ผู้ป่วยแต่ละรายนอนอยู่ภายในช่วงที่เลือก (นับวันรับ ไม่นับวันจำหน่าย)</td></tr>
+    <tr><td>วันนอนเฉลี่ย (ALOS)</td><td>ค่าเฉลี่ย <code>dchdate − regdate</code> ของผู้ที่จำหน่ายในช่วง</td></tr>
+    <tr><td>Readmission 30 วัน</td><td>ผู้จำหน่ายในช่วงที่กลับมา admit ใหม่ (AN อื่น HN เดิม) ภายใน 30 วันหลังจำหน่าย ÷ ผู้จำหน่าย</td></tr>
+    <tr><td>ส่งต่อ / ไม่สมัครใจอยู่ / หนี</td><td><code>ipt.dchtype</code> = 04 / 02 / 03 ตามรหัสมาตรฐาน</td></tr>
+    <tr><td>จำหน่ายหลัง 16:00 น.</td><td>เฉพาะแพทย์อนุญาตให้กลับ (<code>dchtype</code> 01) และ <code>dchtime</code> เกินเวลาที่ตั้ง</td></tr>
+    <tr><td>ยังไม่ลงรหัสโรคหลัก</td><td>ผู้จำหน่ายที่ไม่มีแถวใน <code>iptdiag</code> ที่ <code>diagtype='1'</code> · เกิน 10% ขึ้นเตือน</td></tr>
+    <tr><td>CMI</td><td>ค่าเฉลี่ย <code>ipt.adjrw</code> ของเคสที่ group แล้ว (adjrw &gt; 0)</td></tr>
+    <tr><td>Bed Turnover</td><td>จำนวนผู้จำหน่าย ÷ จำนวนเตียง</td></tr>
+    <tr><td>รอเตียง</td><td>admit แล้วแต่ยังไม่มีแถวเตียงที่เปิดอยู่ใน <code>iptadm</code></td></tr>
+  </table>
+  <p>ตัวเลขทุกตัวมาจากฐานข้อมูลจริง ไม่มีค่าประมาณ · ถ้าโรงพยาบาลไม่ได้บันทึกช่องใด ตัวชี้วัดนั้นจะเป็น 0</p>
+
+  <section class="cont">
+    <h2><span class="n">15</span>ติดต่อและใบอนุญาต</h2>
+    <table>
+      <tr><td style="width:27%">ผู้พัฒนา</td><td>นายเผด็จชัย สิงหล โรงพยาบาลวังน้ำเขียว จ.นครราชสีมา</td></tr>
+      <tr><td>ซอร์สโค้ด / แจ้งปัญหา</td><td><code>github.com/nopneo/ipd-dashboard-wnk</code> (เมนู Issues)</td></tr>
+      <tr><td>ใบอนุญาต</td><td>MIT — ใช้ คัดลอก แก้ไข แจกจ่ายได้ฟรี โดยคงข้อความลิขสิทธิ์ไว้ ซอฟต์แวร์ให้ "ตามสภาพ"
+        โรงพยาบาลผู้ใช้รับผิดชอบการตั้งค่าความปลอดภัยและการใช้ข้อมูลตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล</td></tr>
+      <tr><td>ส่วนประกอบอื่น</td><td>ฟอนต์ Kanit และ Sarabun (SIL Open Font License) · "HOSxP" เป็นของ บริษัท บางกอกเมดิคอลซอฟต์แวร์ จำกัด
+        โครงการนี้ไม่ใช่ผลิตภัณฑ์ทางการของ BMS</td></tr>
+    </table>
+    <div class="box info"><b>แจ้งปัญหาอย่างไรให้แก้ได้เร็ว</b> — บอกเวอร์ชัน (ท้ายหน้าแดชบอร์ด) ระบบปฏิบัติการ
+      และข้อความใน log · <b>ห้ามแนบข้อมูลผู้ป่วย</b> หรือไฟล์ <code>.env</code></div>
+  </section>
+</section>
+
+</body>
+</html>

@@ -1,6 +1,7 @@
 # IPD Dashboard — แดชบอร์ดบริหารจัดการผู้ป่วยใน (HOSxP)
 
-> **เวอร์ชัน 1.1.1** — ใช้ได้ทุกโรงพยาบาลที่ใช้ HOSxP · ติดตั้ง: [INSTALL.md](INSTALL.md) ·
+> **เวอร์ชัน 1.1.1** — ใช้ได้ทุกโรงพยาบาลที่ใช้ HOSxP · **คู่มือติดตั้ง (PDF): [docs/IPD_Dashboard_install_manual.pdf](docs/IPD_Dashboard_install_manual.pdf)** ·
+> ดาวน์โหลดชุดติดตั้ง: [Releases](https://github.com/nopneo/ipd-dashboard-wnk/releases/latest) · สรุปขั้นตอน: [INSTALL.md](INSTALL.md) ·
 > สร้างชุดติดตั้ง `python build_dist.py` → `dist/ipd_dashboard-<เวอร์ชัน>.zip` ·
 > ความปลอดภัย: [SECURITY.md](SECURITY.md) · การเปลี่ยนแปลง: [CHANGELOG.md](CHANGELOG.md)
 
