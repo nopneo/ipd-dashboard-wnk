@@ -436,3 +436,11 @@ table.t.alerts .wm { display: none; }
 }
 .print-mode table.t.alerts .w { display: table-cell; }
 .print-mode table.t.alerts .wm { display: none; }
+
+/* ปุ่มเลือกช่วงด่วน — เดือนนี้ / ปีงบประมาณ */
+.toolbar .quick { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-right: 6px; }
+.toolbar a.pd {
+  text-decoration: none; font-weight: 600; font-size: 14px; padding: 7px 13px; border-radius: 12px;
+  border: 1.5px solid #ddd4f7; background: #fff; color: var(--purple-d); white-space: nowrap;
+}
+.toolbar a.pd.on { background: linear-gradient(135deg, #6d4ee8, #a47bf7); border-color: transparent; color: #fff; }

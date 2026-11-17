@@ -213,3 +213,47 @@ def test_late_discharge_cutoff_env_is_validated(monkeypatch):
     assert importlib.reload(queries).LATE_DISCHARGE == "15:30:00"
     monkeypatch.delenv("IPD_LATE_DISCHARGE")
     importlib.reload(queries)
+
+
+# ------------------------------------------------------------ ปีงบประมาณ
+
+def test_fiscal_year_param_sets_oct_to_sep(client):
+    from datetime import date
+    with app_mod.app.test_request_context("/?fy=2568&d1=2020-01-01"):
+        d1, d2, _ = app_mod._params()
+    assert (d1, d2) == ("2024-10-01", "2025-09-30")
+
+
+def test_current_fiscal_year_ends_today(client):
+    from datetime import date
+    fy = app_mod.current_fiscal_year()
+    with app_mod.app.test_request_context(f"/?fy={fy}"):
+        d1, d2, _ = app_mod._params()
+    assert d2 == date.today().isoformat() and d1.endswith("-10-01")
+
+
+@pytest.mark.parametrize("bad", ["x", "1999", "9999", "2569' or 1=1", ""])
+def test_bad_fiscal_year_is_ignored(client, bad):
+    with app_mod.app.test_request_context("/", query_string={"fy": bad}):
+        d1, d2, _ = app_mod._params()
+    assert d1 == date.today().replace(day=1).isoformat()
+
+
+def test_current_fiscal_year_boundary():
+    assert app_mod.current_fiscal_year(date(2026, 9, 30)) == 2569
+    assert app_mod.current_fiscal_year(date(2026, 10, 1)) == 2570
+
+
+def test_fiscal_year_label_and_12_month_trend(client, fake_db):
+    import queries
+    d = queries.build("2024-10-01", "2025-09-30", "all")
+    assert d["fy"] == 2568 and d["period_label"] == "ปีงบประมาณ 2568" and "30 ก.ย. 2568" in d["period_range"]
+    assert len(d["trend"]) == 12 and d["trend"][0]["label"] == "ต.ค." and d["trend"][-1]["label"] == "ก.ย."
+    assert queries.build("2025-10-05", "2025-11-20", "all")["fy"] is None
+    assert len(queries.build("2025-11-01", "2025-11-20", "all")["trend"]) == 9
+
+
+def test_toolbar_has_fiscal_year_buttons_keeping_ward(client):
+    fy = app_mod.current_fiscal_year()
+    html = client.get("/?ward=01", headers={"X-Forwarded-Prefix": "/ipd"}).get_data(as_text=True)
+    assert f'href="/ipd/?fy={fy}&amp;ward=01"' in html and f"ปีงบ {fy - 2}" in html

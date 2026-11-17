@@ -61,6 +61,15 @@
 <body class="{{ 'print-mode' if print_mode }}">
 
 <form class="toolbar" method="get">
+  {#- เลือกช่วงด่วน: เดือนนี้ / ปีงบประมาณ (1 ต.ค. – 30 ก.ย.) — ลิงก์ธรรมดา ไม่ต้องใช้ JS · คง ward ที่เลือกไว้ -#}
+  {% set wq = {} if d.ward == 'all' else {'ward': d.ward} %}
+  <span class="quick">
+    <a class="pd {{ 'on' if d.this_month }}" href="{{ url_for('dashboard', **wq) }}">เดือนนี้</a>
+    {% for y in range(fiscal_year, fiscal_year - 3, -1) %}
+    <a class="pd {{ 'on' if d.fy == y }}" href="{{ url_for('dashboard', fy=y, **wq) }}"
+       title="1 ต.ค. {{ y - 1 }} – 30 ก.ย. {{ y }}">ปีงบ {{ y }}</a>
+    {% endfor %}
+  </span>
   <label>ตั้งแต่ <input type="date" name="d1" value="{{ d.d1 }}"></label>
   <label>ถึง <input type="date" name="d2" value="{{ d.d2 }}"></label>
   <select name="ward">
@@ -124,7 +133,7 @@
     </div>
     <div class="meta">
       <span class="a">{{ d.period_label }}</span>
-      <div class="b">ข้อมูลจาก HOSxP<br>ณ {{ d.generated_at }}</div>
+      <div class="b">{% if d.period_range %}{{ d.period_range }}<br>{% endif %}ข้อมูลจาก HOSxP<br>ณ {{ d.generated_at }}</div>
     </div>
   </div>
 
@@ -133,7 +142,7 @@
     <header><span class="no">1</span>
       <span><span class="t">IPD KPI Summary</span> <span class="st">ภาพรวมผู้ป่วยใน</span></span>
       <span class="filters">
-        <span class="chip">📅 {{ d.period_label }}</span>
+        <span class="chip">📅 {{ d.period_label }}{% if d.period_range %} · {{ d.period_range }}{% endif %}</span>
         <span class="chip">🛏 {% if d.ward == 'all' %}ทุก Ward{% else %}
           {%- for w in d.wards if w.ward == d.ward %}{{ w.name }}{% endfor %}{% endif %}</span>
       </span>

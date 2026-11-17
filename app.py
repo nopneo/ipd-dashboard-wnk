@@ -53,7 +53,7 @@ class PrefixMiddleware:
 app = Flask(__name__)
 app.wsgi_app = PrefixMiddleware(app.wsgi_app)
 
-VERSION = "1.1.1"
+VERSION = "1.2.0"
 ICON_VERSION = "1"
 #: ผู้พัฒนา — แสดงท้ายหน้า แก้ทับได้ด้วย env IPD_DEV_CONTACT
 DEV_CONTACT = "นายเผด็จชัย สิงหล โรงพยาบาลวังน้ำเขียว"
@@ -94,6 +94,7 @@ def _branding():
                             else "img/logo.png") + "?v=" + ICON_VERSION,
         "hero_url": url_for("static", filename="img/hero.jpg") if img("hero.jpg") else None,
         "version": VERSION,
+        "fiscal_year": current_fiscal_year(),
         "contact": os.getenv("IPD_CONTACT", "ผู้ดูแลระบบสารสนเทศของโรงพยาบาล"),
         "dev_contact": os.getenv("IPD_DEV_CONTACT", DEV_CONTACT),
     }
@@ -119,6 +120,22 @@ def _parse_date(v):
         return None
 
 
+def current_fiscal_year(today=None):
+    """ปีงบประมาณ (พ.ศ.) ของวันที่ — เริ่ม 1 ต.ค. เช่น 17 พ.ย. 2569 = ปีงบ 2570"""
+    today = today or date.today()
+    return today.year + 543 + (1 if today.month >= 10 else 0)
+
+
+def _fiscal_year_arg(v, today):
+    """fy จาก URL: รับเฉพาะ พ.ศ. 4 หลักที่ไม่เกินปีงบปัจจุบัน และย้อนได้ไม่เกิน 10 ปี"""
+    try:
+        fy = int(v)
+    except (TypeError, ValueError):
+        return None
+    cur = current_fiscal_year(today)
+    return fy if cur - 10 <= fy <= cur else None
+
+
 def _params():
     """(d1, d2, ward) ที่ผ่านการตรวจแล้ว
 
@@ -128,6 +145,9 @@ def _params():
     today = date.today()
     d1 = _parse_date(request.args.get("d1")) or today.replace(day=1)
     d2 = _parse_date(request.args.get("d2")) or today
+    fy = _fiscal_year_arg(request.args.get("fy"), today)
+    if fy:                                   # ปีงบประมาณ พ.ศ. = 1 ต.ค. ปีก่อน – 30 ก.ย.
+        d1, d2 = date(fy - 544, 10, 1), date(fy - 543, 9, 30)
     d2 = min(d2, today)
     d1 = min(d1, d2)
     if (d2 - d1).days >= MAX_DAYS:

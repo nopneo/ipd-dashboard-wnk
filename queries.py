@@ -115,6 +115,13 @@ def _readmission(d1, d2, wc):
 
 # ------------------------------------------- 2. แนวโน้มรับใหม่ / จำหน่าย
 
+def _trend_months(d1, d2):
+    """กราฟแนวโน้ม: ปกติ 9 เดือนล่าสุด · ช่วงที่เลือกยาวกว่านั้น (เช่นทั้งปีงบ) แสดงครบทุกเดือนของช่วง สูงสุด 12"""
+    a, b = date.fromisoformat(d1), date.fromisoformat(d2)
+    span = (b.year - a.year) * 12 + b.month - a.month + 1
+    return min(max(span, 9), 12)
+
+
 def admission_trend(d2, ward, months=9):
     """ยอดรับใหม่-จำหน่ายรายเดือน และยอดผู้ป่วยคงพยาบาล ณ สิ้นเดือน
 
@@ -506,6 +513,7 @@ def build(d1=None, d2=None, ward="all"):
         if hit and time.time() - hit[0] < CACHE_TTL:
             return hit[1]
 
+    fy = fiscal_year_of(d1, d2)
     kpi = kpi_summary(d1, d2, ward)
     beds = bed_occupancy()
     los = los_distribution(ward)
@@ -516,11 +524,14 @@ def build(d1=None, d2=None, ward="all"):
 
     data = {
         "generated_at": _thai_datetime(),
-        "period_label": _thai_range(d1, d2),
+        "period_label": f"ปีงบประมาณ {fy}" if fy else _thai_range(d1, d2),
+        "period_range": _thai_range(d1, d2) if fy else "",      # ปีงบ: วันที่ไว้บรรทัดรอง ป้ายหลักจะได้สั้น
+        "fy": fy,
+        "this_month": d1 == today.replace(day=1).isoformat() and d2 == today.isoformat(),
         "d1": d1, "d2": d2, "ward": ward,
         "wards": ward_list(),
         "kpi": kpi,
-        "trend": admission_trend(d2, ward),
+        "trend": admission_trend(d2, ward, months=_trend_months(d1, d2)),
         "beds": beds,
         "status": patient_status(ward),
         "los": los,
@@ -544,6 +555,15 @@ TH_MONTH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "�
 def _thai_date(d):
     d = date.fromisoformat(d) if isinstance(d, str) else d
     return f"{d.day} {TH_MONTH[d.month - 1]} {d.year + 543}"
+
+
+def fiscal_year_of(d1, d2):
+    """ช่วงที่เลือกคือ "ทั้งปีงบประมาณ" ไหม — 1 ต.ค. ถึง 30 ก.ย. (หรือถึงวันนี้ถ้าปีงบยังไม่จบ) → พ.ศ., ไม่ใช่ = None"""
+    a, b = date.fromisoformat(d1), date.fromisoformat(d2)
+    if (a.month, a.day) != (10, 1):
+        return None
+    end = date(a.year + 1, 9, 30)
+    return a.year + 544 if b == end or (b < end and b == date.today()) else None
 
 
 def _thai_range(d1, d2):
