@@ -143,6 +143,7 @@
       <span><span class="t">IPD KPI Summary</span> <span class="st">ภาพรวมผู้ป่วยใน</span></span>
       <span class="filters">
         <span class="chip">📅 {{ d.period_label }}{% if d.period_range %} · {{ d.period_range }}{% endif %}</span>
+        {% if public_view %}<span class="chip" title="เครื่องในโรงพยาบาลเห็นตัวเลขเต็ม">🔒 ข้อมูลสาธารณะ: ช่วงวันที่ปัดเป็นเดือนเต็ม · สถานะจำหน่ายที่น้อยกว่า 5 รายรวมเป็น “สถานะอื่น”</span>{% endif %}
         <span class="chip">🛏 {% if d.ward == 'all' %}ทุก Ward{% else %}
           {%- for w in d.wards if w.ward == d.ward %}{{ w.name }}{% endfor %}{% endif %}</span>
       </span>

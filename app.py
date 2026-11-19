@@ -4,6 +4,7 @@
 production:  gunicorn -b 0.0.0.0:5700 app:app   (ออกผ่าน sub-path เช่น /ipd/)
 """
 
+import ipaddress
 import os
 import re
 import tempfile
@@ -22,6 +23,7 @@ from flask import (Flask, jsonify, render_template, request, send_file,
                    url_for)
 
 import db
+import privacy
 import queries
 import render
 from cache import TTLCache
@@ -158,17 +160,96 @@ def _params():
     return d1.isoformat(), d2.isoformat(), ward
 
 
+# ---------------------------------------------------------------- คนใน / คนนอก รพ. (privacy.py)
+
+#: reverse proxy ที่เชื่อ X-Forwarded-For ได้ (Apache บนเครื่องเดียวกัน)
+TRUSTED_PROXIES = {x.strip() for x in os.getenv("IPD_TRUSTED_PROXIES", "127.0.0.1,::1").split(",") if x.strip()}
+_CF_DEFAULT = ("173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,"
+               "190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,"
+               "104.24.0.0/14,172.64.0.0/13,131.0.72.0/22,2400:cb00::/32,2606:4700::/32,2803:f800::/32,"
+               "2405:b500::/32,2405:8100::/32,2a06:98c0::/29,2c0f:f248::/32")
+
+
+def _nets(spec):
+    out = []
+    for x in spec.split(","):
+        try:
+            out.append(ipaddress.ip_network(x.strip(), strict=False))
+        except ValueError:
+            pass
+    return out
+
+
+CF_NETS = _nets(os.getenv("IPD_CF_RANGES", _CF_DEFAULT))
+#: IP สาธารณะจริงของ รพ. (เข้าผ่าน Cloudflare) — ห้ามใส่ IP บ้าน · เครื่อง 192.168.x.x นับเป็นคนในอยู่แล้ว
+LAN_NETS = _nets(os.getenv("IPD_LAN_NETS", ""))
+
+
+def _is_cf(ip):
+    try:
+        a = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return any(a in n for n in CF_NETS)
+
+
+def _client_ip():
+    """IP ผู้ใช้: ค่าท้ายสุดของ X-Forwarded-For (Apache ต่อท้ายเอง ปลอมไม่ได้) · ผ่าน Cloudflare จริงจึงเชื่อ CF-Connecting-IP"""
+    peer = request.remote_addr
+    if peer not in TRUSTED_PROXIES:
+        return peer
+    xff = [x.strip() for x in request.headers.get("X-Forwarded-For", "").split(",") if x.strip()]
+    hop = xff[-1] if xff else peer
+    cf = request.headers.get("CF-Connecting-IP", "").strip()
+    return cf if cf and _is_cf(hop) else hop
+
+
+def _from_lan():
+    """เครื่องใน รพ. หรือไม่ — ผ่าน Cloudflare นับเฉพาะ IP ใน IPD_LAN_NETS"""
+    try:
+        ip = ipaddress.ip_address((_client_ip() or "").strip())
+    except ValueError:
+        return False
+    if any(ip in n for n in LAN_NETS):
+        return True
+    if request.headers.get("CF-Connecting-IP", "").strip():
+        return False
+    return ip.is_private or ip.is_loopback
+
+
+def _public_view():
+    """คนนอก รพ. → ช่วงวันที่ปัดเป็นเดือนเต็ม และสถานะจำหน่ายช่องเล็กรวมเป็นช่องเดียว
+    public=1 = บังคับโหมดสาธารณะ (ใช้ตอนส่งออกไฟล์ให้คนนอก เพราะ chromium เรียกหน้าเว็บจาก 127.0.0.1 ซึ่งนับเป็นคนใน)"""
+    if not privacy.enabled():
+        return False
+    return request.args.get("public") == "1" or not _from_lan()
+
+
+def _view_params():
+    """(d1, d2, ward, public) ของหน้าแดชบอร์ด"""
+    d1, d2, ward = _params()
+    public = _public_view()
+    if public:
+        d1, d2 = privacy.month_window(d1, d2)
+    return d1, d2, ward, public
+
+
+def _view_data(d1, d2, ward, public):
+    data = queries.build(d1, d2, ward)
+    return privacy.public_ctx(data) if public else data
+
+
 @app.route("/")
 def dashboard():
-    d1, d2, ward = _params()
-    return render_template("dashboard.html", d=queries.build(d1, d2, ward),
+    d1, d2, ward, public = _view_params()
+    return render_template("dashboard.html", d=_view_data(d1, d2, ward, public), public_view=public,
                            print_mode=request.args.get("print") == "1")
 
 
 @app.route("/api/data.json")
 def api_data():
-    d1, d2, ward = _params()
-    return jsonify(queries.build(d1, d2, ward))
+    d1, d2, ward, public = _view_params()
+    return jsonify(_view_data(d1, d2, ward, public))
 
 
 class _RenderLock:
@@ -239,12 +320,13 @@ def export(fmt):
     if fmt not in MIME or not EXPORT_ENABLED:
         return {"error": "รองรับเฉพาะ png, jpg, pdf" if EXPORT_ENABLED else "ปิดการส่งออกไฟล์"}, 404
 
-    d1, d2, ward = _params()
-    qs = urllib.parse.urlencode({"d1": d1, "d2": d2, "ward": ward, "print": "1"})
+    d1, d2, ward, public = _view_params()
+    qs = urllib.parse.urlencode({"d1": d1, "d2": d2, "ward": ward, "print": "1", **({"public": "1"} if public else {})})
     url = f"http://127.0.0.1:{os.getenv('PORT', '5700')}/?{qs}"
 
     name = f"ipd_{d1}_{d2}{'' if ward == 'all' else '_ward' + ward}.{fmt}"
-    blob = _export_cache.get(name, EXPORT_CACHE_TTL)
+    cache_key = name + ("|public" if public else "")            # ไฟล์ของคนนอกต้องไม่ได้ฉบับเต็มจาก cache
+    blob = _export_cache.get(cache_key, EXPORT_CACHE_TTL)
     if blob is not None:
         return send_file(BytesIO(blob), mimetype=MIME[fmt], as_attachment=True, download_name=name)
     if not _render_lock.acquire(timeout=EXPORT_WAIT):
@@ -256,7 +338,7 @@ def export(fmt):
             # อ่านใส่หน่วยความจำก่อนออกจาก with — send_file ยังถือ handle ค้างไว้
             # ทำให้ลบโฟลเดอร์ชั่วคราวไม่ได้ (PermissionError บน Windows)
             blob = open(out, "rb").read()
-        _export_cache.set(name, blob)
+        _export_cache.set(cache_key, blob)
         return send_file(BytesIO(blob), mimetype=MIME[fmt],
                          as_attachment=True, download_name=name)
     except Exception as e:                      # chromium ไม่มี/ตาย/หมดเวลา
