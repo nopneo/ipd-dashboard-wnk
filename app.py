@@ -1,7 +1,7 @@
 """IPD Dashboard — แดชบอร์ดบริหารจัดการผู้ป่วยใน (HOSxP)
 
 รันเอง:      python app.py            → http://127.0.0.1:5700/
-production:  gunicorn -b 0.0.0.0:5700 app:app   (ออกผ่าน sub-path เช่น /ipd/)
+production:  gunicorn -b 127.0.0.1:5700 app:app หลัง Apache (sub-path เช่น /ipd/) — ห้ามเปิด 0.0.0.0
 """
 
 import ipaddress
@@ -29,25 +29,35 @@ import render
 from cache import TTLCache
 
 
+#: reverse proxy ที่เชื่อ X-Forwarded-For / -Prefix / -Proto ได้ (Apache บนเครื่องเดียวกัน)
+TRUSTED_PROXIES = {x.strip() for x in os.getenv("IPD_TRUSTED_PROXIES", "127.0.0.1,::1").split(",") if x.strip()}
+#: sub-path ที่รับ: /ชื่อ หรือ /ชื่อ/ชื่อ (ตัวอักษร ตัวเลข - _) — ไม่รับ // หรืออักขระที่แทรกลงลิงก์ได้
+_PREFIX_RE = re.compile(r"(/[A-Za-z0-9_-]+)+/?")
+
+
 class PrefixMiddleware:
     """รองรับการวางแอปไว้หลัง reverse proxy แบบ sub-path
 
     อ่าน X-Forwarded-Prefix มาตั้ง SCRIPT_NAME และ X-Forwarded-Proto มาตั้ง url_scheme
-    ทำให้ url_for() สร้างลิงก์ /ipd/... ถูก และยังเข้าตรง :5700 บน LAN ได้เหมือนเดิม
+    ทำให้ url_for() สร้างลิงก์ /ipd/... ถูก · เชื่อเฉพาะจาก reverse proxy บนเครื่องเดียวกัน (TRUSTED_PROXIES)
+    เครื่องอื่นส่ง header ปลอมมาแก้ลิงก์ในหน้า (เช่น //เว็บอื่น) ไม่ได้
     """
 
     def __init__(self, wsgi_app):
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        prefix = environ.get("HTTP_X_FORWARDED_PREFIX", "")
+        trusted = environ.get("REMOTE_ADDR", "") in TRUSTED_PROXIES
+        prefix = environ.get("HTTP_X_FORWARDED_PREFIX", "") if trusted else ""
+        if prefix and not _PREFIX_RE.fullmatch(prefix):
+            prefix = ""
         if prefix:
             environ["SCRIPT_NAME"] = prefix.rstrip("/")
             path = environ.get("PATH_INFO", "")
             if path.startswith(prefix):
                 environ["PATH_INFO"] = path[len(prefix):] or "/"
-        proto = environ.get("HTTP_X_FORWARDED_PROTO")
-        if proto:
+        proto = environ.get("HTTP_X_FORWARDED_PROTO") if trusted else None
+        if proto in ("http", "https"):
             environ["wsgi.url_scheme"] = proto
         return self.wsgi_app(environ, start_response)
 
@@ -55,7 +65,7 @@ class PrefixMiddleware:
 app = Flask(__name__)
 app.wsgi_app = PrefixMiddleware(app.wsgi_app)
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 ICON_VERSION = "1"
 #: ผู้พัฒนา — แสดงท้ายหน้า แก้ทับได้ด้วย env IPD_DEV_CONTACT
 DEV_CONTACT = "นายเผด็จชัย สิงหล โรงพยาบาลวังน้ำเขียว"
@@ -162,8 +172,6 @@ def _params():
 
 # ---------------------------------------------------------------- คนใน / คนนอก รพ. (privacy.py)
 
-#: reverse proxy ที่เชื่อ X-Forwarded-For ได้ (Apache บนเครื่องเดียวกัน)
-TRUSTED_PROXIES = {x.strip() for x in os.getenv("IPD_TRUSTED_PROXIES", "127.0.0.1,::1").split(",") if x.strip()}
 _CF_DEFAULT = ("173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,"
                "190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,"
                "104.24.0.0/14,172.64.0.0/13,131.0.72.0/22,2400:cb00::/32,2606:4700::/32,2803:f800::/32,"
@@ -183,6 +191,9 @@ def _nets(spec):
 CF_NETS = _nets(os.getenv("IPD_CF_RANGES", _CF_DEFAULT))
 #: IP สาธารณะจริงของ รพ. (เข้าผ่าน Cloudflare) — ห้ามใส่ IP บ้าน · เครื่อง 192.168.x.x นับเป็นคนในอยู่แล้ว
 LAN_NETS = _nets(os.getenv("IPD_LAN_NETS", ""))
+#: IP ภายในมาตรฐาน — ระบุเอง ไม่ใช้ ip.is_private ที่นับช่วงสาธารณะบางช่วงเป็น private ด้วย
+#: (เช่น 198.18.0.0/15, 203.0.113.0/24)
+PRIVATE_NETS = _nets("10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,::1/128,fc00::/7")
 
 
 def _is_cf(ip):
@@ -210,11 +221,13 @@ def _from_lan():
         ip = ipaddress.ip_address((_client_ip() or "").strip())
     except ValueError:
         return False
+    if getattr(ip, "ipv4_mapped", None):
+        ip = ip.ipv4_mapped
     if any(ip in n for n in LAN_NETS):
         return True
     if request.headers.get("CF-Connecting-IP", "").strip():
         return False
-    return ip.is_private or ip.is_loopback
+    return any(ip in n for n in PRIVATE_NETS)
 
 
 def _public_view():

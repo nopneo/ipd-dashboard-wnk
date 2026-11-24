@@ -36,7 +36,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=/opt/ipd_dashboard
-ExecStart=/opt/ipd_dashboard/.venv/bin/gunicorn --bind 0.0.0.0:5700 --workers 3 --timeout 120 \
+ExecStart=/opt/ipd_dashboard/.venv/bin/gunicorn --bind 127.0.0.1:5700 --workers 3 --timeout 120 \
   --access-logfile - --access-logformat '%(t)s %(m)s %(U)s %(s)s %(L)ss' app:app
 Restart=always
 # ไม่ต้องใช้สิทธิ์ root — ถ้าใช้ปุ่มส่งออก chromium จะเปิด sandbox เองเมื่อไม่ใช่ root
@@ -97,7 +97,8 @@ ProxyPassReverse /ipd/ http://127.0.0.1:5700/
 </Location>
 ```
 
-แอปอ่าน `X-Forwarded-Prefix` / `X-Forwarded-Proto` สร้างลิงก์ให้ถูกเอง · แก้ค่าตั้งของ Apache ทุกครั้ง: สำรองไฟล์ →
+แอปอ่าน `X-Forwarded-Prefix` / `X-Forwarded-Proto` สร้างลิงก์ให้ถูกเอง (เชื่อเฉพาะจาก `IPD_TRUSTED_PROXIES` ค่าเริ่มต้น 127.0.0.1)
+· **gunicorn ฟังเฉพาะ `127.0.0.1`** — ห้าม `0.0.0.0`: เครื่องใน LAN จะต่อพอร์ตตรงโดยไม่ผ่าน Apache · เครื่องใน รพ. ใช้โดเมนภายใน (เช่น `https://lan.wnkhos.go.th/ipd/`) แทน `http://<IP>:5700` · แก้ค่าตั้งของ Apache ทุกครั้ง: สำรองไฟล์ →
 `httpd -t` → ผ่านค่อย `systemctl reload httpd`
 
 **ถ้าเปิดออกอินเทอร์เน็ต อ่าน [SECURITY.md](SECURITY.md) ก่อน** (rate limit, firewall, HTTPS ที่ต้องตั้งที่ proxy)
